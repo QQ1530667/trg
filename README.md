@@ -25,11 +25,11 @@ Wkb is a modal web browser utilizing WebKitGTK.
 
 #### Synopsis:
 
-	wkb ["command and args" ...]
+	wkb [command ...]
 
 #### Example:
 
-	$ wkb "nset wkb.download-dir /tmp; open google.com; topen archlinux.org"
+	$ wkb nset wkb.download-dir /tmp\; open google.com\; topen archlinux.org
 
 Run `:help [command]` to get a list of available commands or to get help for a specific command.
 
