@@ -10,7 +10,7 @@ STRIPPED_URI="${STRIPPED_URI%%#*}"
 
 case "$STRIPPED_URI" in
 	*.torrent|magnet:*)
-		transmission-remote 192.168.1.9 -a "$URI"
+		transmission-remote -a "$URI"
 		;;
 	http://imgur.com/a/*|http://www.imgur.com/a/*)
 		curl -s "$STRIPPED_URI/embed" | grep '<img id="thumb-' | sed 's@.*<img id="thumb-\([^"]*\)".*@http://i.imgur.com/\1.jpg@' | xargs feh
