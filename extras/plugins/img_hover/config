@@ -1,0 +1,4 @@
+set img-hover.base "{wkb.config-dir}/plugins/img_hover"
+alias img-hover "spawn-sync \"{img-hover.base}/img_hover.sh\""
+unset img-hover.base
+nset hook.dom-ready "{hook.dom-ready};img-hover"

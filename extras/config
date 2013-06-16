@@ -1,0 +1,45 @@
+# Aliases
+alias zt "nset s.zoom-text-only"
+alias sc "nset s.enable-scripts"
+alias pl "nset s.enable-plugins"
+alias pc "nset s.enable-page-cache"
+alias cf "nset wkb.cookie-file"
+alias e "nset v.editable"
+alias dcl dl-clear
+alias dc dl-cancel
+alias dl dl-new
+alias ds dl-status
+alias dd "nset wkb.download-dir \"\{file-chooser.dir:wkb.download-dir}\""
+alias rc "loadconfig config"
+alias priv "cf \"\"; nset s.enable-private-browsing t; nset s.enable-dns-prefetching f"
+
+# Settings
+nset s.enable-plugins f
+nset s.enable-offline-web-application-cache f
+nset s.monospace-font-family Monospace
+nset s.default-monospace-font-size 12
+nset s.minimum-font-size 8
+nset s.enable-developer-extras t
+nset wkb.allow-popups f
+nset wkb.auto-open-downloads t
+set term xterm
+set editor vim
+
+# Clear hooks
+nset hook.load-started ""
+nset hook.dom-ready ""
+nset hook.load-finished ""
+nset hook.create ""
+
+# Load plugins
+spawn-sync "{wkb.config-dir}/load_plugins.sh"
+
+# Binds
+bind nci c p run "print"
+bind n - M run "spawn \{term} -e mplayer -cache 32768 -cache-min 2 -cache-seek-min 1 \{uri}"
+bind nci 1 b run "open bm"
+bind nci 1 B run "topen bm"
+bind nci 1 c run "spawn \{term} -e dash -c \"cat > \{wkb.cmd-fifo}\""
+
+# Load webkit1/webkit2 specific config
+spawn-sync "{wkb.config-dir}/load_config.sh" {wkb.version}

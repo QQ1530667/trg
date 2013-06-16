@@ -1,0 +1,3 @@
+/* Fix (mostly) the problem with dark themes and webkit */
+input,textarea { background-color: #fff; color: #444; border: #ccc solid 1px }
+select,button { background-color: #ddd; color: #444; border: #ccc solid 1px }

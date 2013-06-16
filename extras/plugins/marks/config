@@ -1,0 +1,11 @@
+set marks.base "{wkb.config-dir}/plugins/marks"
+set marks.file "{marks.base}/marks.txt"
+alias open "spawn-sync \"{marks.base}/open.sh\" \"{marks.file}\" !open"
+alias topen "spawn-sync \"{marks.base}/open.sh\" \"{marks.file}\" !topen"
+alias wopen "spawn-sync \"{marks.base}/open.sh\" \"{marks.file}\" !wopen"
+alias m "spawn-sync \"{marks.base}/new.sh\" \"{marks.file}\" \"\{uri}\""
+alias mn "spawn-sync \"{marks.base}/new.sh\" \"{marks.file}\""
+alias ml "spawn-sync \"{marks.base}/list.sh\" \"{marks.file}\""
+alias me "spawn \{term} -e \{editor} \"{marks.file}\""
+unset marks.base
+unset marks.file

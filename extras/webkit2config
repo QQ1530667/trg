@@ -1,0 +1,11 @@
+# Aliases
+alias ja "nset s.enable-java"
+
+# Settings
+nset s.enable-java f
+#nset s.enable-write-console-messages-to-stdout t
+#nset s.enable-accelerated-2d-canvas t
+nset wkb.spellcheck-langs en_US,en_GB
+nset wkb.spellcheck t
+nset s.default-monospace-font-size 12
+nset s.minimum-font-size 8

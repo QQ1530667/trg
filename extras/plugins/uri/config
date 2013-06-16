@@ -1,0 +1,3 @@
+set uri.base "{wkb.config-dir}/plugins/uri"
+bind n - a run "spawn \"{uri.base}/uri.sh\" \"\{wkb.cmd-fifo}\" \"\{uri}\""
+unset uri.base
