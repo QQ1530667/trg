@@ -65,7 +65,7 @@ would expand to:
 
 	echo Hello, World!
 
-Aliases can be escaped by prepending '!'.
+Aliases can be escaped by prepending `!`.
 
 #### Variable expansion:
 
@@ -79,7 +79,7 @@ If the first non-whitespace character in a line is `#`, the line is not interpre
 
 ### Configuration:
 
-Wkb reads `$XDG_CONFIG_HOME/wkb/config` on startup. See extras/ for an example configuration.
+Wkb reads `$XDG_CONFIG_HOME/wkb/config` on startup. See `extras/` for an example configuration.
 
 ### Theming:
 
