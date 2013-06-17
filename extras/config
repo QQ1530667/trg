@@ -1,5 +1,4 @@
 # Aliases
-alias zt "nset s.zoom-text-only"
 alias sc "nset s.enable-scripts"
 alias pl "nset s.enable-plugins"
 alias pc "nset s.enable-page-cache"
