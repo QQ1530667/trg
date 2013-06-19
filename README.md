@@ -69,7 +69,7 @@ Aliases can be escaped by prepending `!`.
 
 #### Variable expansion:
 
-Variables are expanded by enclosing the variable name in braces (example: `{wkb.version}`). Both internal variables (those that can be accessed with the `set` command) and environment variables can be expanded.
+Variables are expanded by enclosing the variable name in braces (example: `{wkb.download-dir}`). Both internal variables (those that can be accessed with the `set` command) and environment variables can be expanded.
 
 Alternate variables can be specified within braces, separated by `:` (example: `{XDG_CONFIG_HOME:XDG_CONFIG_HOME_DEFAULT}`). If a variable does not exist or is empty, the next alternate will be tried. This feature is used internally to set `wkb.config-dir` because the `XDG_CONFIG_HOME` environment variable may not be set.
 
