@@ -311,7 +311,7 @@ static int set_handler_gobject(struct wkb *, WebKitWebView *, struct var *, cons
 static int set_handler_wkb(struct wkb *, WebKitWebView *, struct var *, const gchar *);
 
 /* Wkb setting accessor/mutator functions */
-static union wkb_setting get_version(struct wkb *, int);
+static union wkb_setting get_webkit_api(struct wkb *, int);
 static union wkb_setting get_cmd_fifo(struct wkb *, int);
 static union wkb_setting get_config_dir(struct wkb *, int);
 static void set_config_dir(struct wkb *, union wkb_setting);
@@ -2607,9 +2607,9 @@ static int set_handler_wkb(struct wkb *w, WebKitWebView *wv, struct var *v, cons
 
 /* Begin wkb setting accessor/mutator functions */
 
-static union wkb_setting get_version(struct wkb *w, int context)
+static union wkb_setting get_webkit_api(struct wkb *w, int context)
 {
-	return (union wkb_setting) { .s = WKB_VERSION };
+	return (union wkb_setting) { .s = WKB_WEBKIT_API };
 }
 
 static union wkb_setting get_cmd_fifo(struct wkb *w, int context)

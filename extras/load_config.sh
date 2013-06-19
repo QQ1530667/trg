@@ -1,9 +1,5 @@
 #!/bin/dash
 case "$1" in
-	*webkit2*)
-		echo "loadconfig webkit2config"
-		;;
-	*)
-		echo "loadconfig webkit1config"
-		;;
+	1) echo "loadconfig webkit1config" ;;
+	2) echo "loadconfig webkit2config" ;;
 esac

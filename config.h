@@ -1,16 +1,8 @@
-#ifdef __HAVE_GTK3__
-#define WKB_GTK_VERSION "gtk3"
-#else
-#define WKB_GTK_VERSION "gtk2"
-#endif
-
 #ifdef __HAVE_WEBKIT2__
-#define WKB_WEBKIT_VERSION "webkit2"
+#define WKB_WEBKIT_API "2"
 #else
-#define WKB_WEBKIT_VERSION "webkit1"
+#define WKB_WEBKIT_API "1"
 #endif
-
-#define WKB_VERSION "0.1-"WKB_GTK_VERSION"-"WKB_WEBKIT_VERSION
 
 static const gchar null_title[]      = "Untitled";
 
@@ -18,7 +10,7 @@ static const gchar null_title[]      = "Untitled";
 #define VAR_PREFIX_WEBKIT_SETTINGS "s."
 #define VAR_PREFIX_SOUP_SESSION    "soup."
 
-#define VAR_VERSION        "wkb.version"
+#define VAR_WEBKIT_API     "wkb.webkit-api"
 #define VAR_CMD_FIFO       "wkb.cmd-fifo"
 #define VAR_CONFIG_DIR     "wkb.config-dir"
 #define VAR_COOKIE_FILE    "wkb.cookie-file"
@@ -197,7 +189,7 @@ static struct bind_handler bind_handlers[] = {
 };
 
 static struct default_wkb_setting default_wkb_settings[] = {
-	{ VAR_VERSION,         WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_version,         NULL,                { .s = NULL } },
+	{ VAR_WEBKIT_API,      WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_webkit_api,      NULL,                { .s = NULL } },
 	{ VAR_CMD_FIFO,        WKB_SETTING_SCOPE_WINDOW,  WKB_SETTING_TYPE_STRING,  get_cmd_fifo,        NULL,                { .s = NULL } },
 	{ VAR_CONFIG_DIR,      WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_config_dir,      set_config_dir,      { .s = NULL } },
 	{ VAR_COOKIE_FILE,     WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_cookie_file,     set_cookie_file,     { .s = NULL } },

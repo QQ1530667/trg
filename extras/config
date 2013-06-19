@@ -41,4 +41,4 @@ bind nci 1 B run "topen bm"
 bind nci 1 c run "spawn \{term} -e dash -c \"cat > \{wkb.cmd-fifo}\""
 
 # Load webkit1/webkit2 specific config
-spawn-sync "{wkb.config-dir}/load_config.sh" {wkb.version}
+spawn-sync "{wkb.config-dir}/load_config.sh" {wkb.webkit-api}
