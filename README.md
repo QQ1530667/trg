@@ -7,7 +7,7 @@ Wkb is a modal web browser utilizing WebKitGTK.
 #### Dependencies:
 
 * webkitgtk or webkit2gtk
-* dash
+* dash (for scripts in the example configuration)
 
 #### Build with gtk2 and webkit1:
 
