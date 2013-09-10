@@ -267,6 +267,9 @@ static int cmd_add_ss(struct wkb *, WebKitWebView *, struct command *, int, gcha
 static int cmd_alias(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_bind(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_clear(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
+#ifdef __HAVE_WEBKIT2__
+static int cmd_clear_cache(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
+#endif
 static int cmd_dl_cancel(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_dl_clear(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_dl_new(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
@@ -1842,6 +1845,14 @@ static int cmd_clear(struct wkb *w, WebKitWebView *wv, struct command *c, int ar
 	return 0;
 }
 
+#ifdef __HAVE_WEBKIT2__
+static int cmd_clear_cache(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+{
+	webkit_web_context_clear_cache(webkit_web_view_get_context(wv));
+	return 0;
+}
+#endif
+
 static int cmd_dl_cancel(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
@@ -1881,7 +1892,7 @@ static int cmd_dl_new(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	uri = construct_uri(str->str);
 	g_string_free(str, TRUE);
 #ifdef __HAVE_WEBKIT2__
-	webkit_web_context_download_uri(webkit_web_context_get_default(), uri);
+	webkit_web_context_download_uri(webkit_web_view_get_context(wv), uri);
 #else
 	WebKitDownload *d = webkit_download_new(webkit_network_request_new(uri));
 	struct download *dl = new_download(d, webkit_download_get_suggested_filename(d));
@@ -2639,7 +2650,7 @@ static void set_cookie_file(struct wkb *w, union wkb_setting v)
 	g_free(global.cookie_file);
 	global.cookie_file = g_strdup(v.s);
 #ifdef __HAVE_WEBKIT2__
-	webkit_cookie_manager_set_persistent_storage(webkit_web_context_get_cookie_manager(webkit_web_context_get_default()), (v.s == NULL) ? "" : v.s, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
+	webkit_cookie_manager_set_persistent_storage(webkit_web_context_get_cookie_manager(webkit_web_view_get_context(GET_CURRENT_VIEW(w))), (v.s == NULL) ? "" : v.s, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
 #else
 	soup_session_remove_feature_by_type(webkit_get_default_session(), soup_cookie_jar_get_type());
 	if (v.s == NULL || v.s[0] == '\0') soup_session_add_feature(webkit_get_default_session(), SOUP_SESSION_FEATURE(soup_cookie_jar_new()));
@@ -2657,7 +2668,7 @@ static union wkb_setting get_cookie_policy(struct wkb *w, int context)
 static void set_cookie_policy(struct wkb *w, union wkb_setting v)
 {
 #ifdef __HAVE_WEBKIT2__
-	WebKitCookieManager *cm = webkit_web_context_get_cookie_manager(webkit_web_context_get_default());
+	WebKitCookieManager *cm = webkit_web_context_get_cookie_manager(webkit_web_view_get_context(GET_CURRENT_VIEW(w)));
 	if (v.s == NULL) return;
 	else if (strcmp(v.s, "always") == 0)
 		webkit_cookie_manager_set_accept_policy(cm, WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS);
@@ -2788,18 +2799,18 @@ static void set_spell_langs(struct wkb *w, union wkb_setting v)
 	g_free(global.spell_langs);
 	global.spell_langs = g_strdup(v.s);
 	gchar **langs = g_strsplit((v.s != NULL) ? v.s : "", ",", -1);
-	webkit_web_context_set_spell_checking_languages(webkit_web_context_get_default(), (const gchar * const *) langs);
+	webkit_web_context_set_spell_checking_languages(webkit_web_view_get_context(GET_CURRENT_VIEW(w)), (const gchar * const *) langs);
 	g_strfreev(langs);
 }
 
 static union wkb_setting get_spell(struct wkb *w, int context)
 {
-	return (union wkb_setting) { .b = webkit_web_context_get_spell_checking_enabled(webkit_web_context_get_default()) };
+	return (union wkb_setting) { .b = webkit_web_context_get_spell_checking_enabled(webkit_web_view_get_context(GET_CURRENT_VIEW(w))) };
 }
 
 static void set_spell(struct wkb *w, union wkb_setting v)
 {
-	webkit_web_context_set_spell_checking_enabled(webkit_web_context_get_default(), v.b);
+	webkit_web_context_set_spell_checking_enabled(webkit_web_view_get_context(GET_CURRENT_VIEW(w)), v.b);
 }
 #endif
 

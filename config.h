@@ -49,6 +49,10 @@ static gchar cmd_bind_desc[]          = "bind: bind a key to a handler, print ma
 static gchar cmd_bind_usage[]         = "bind: usage: bind [<modes:a,n,c,i,p> <modifiers:-,c,1,2,3,4,5> <key> [<handler> [arg]]]\n";
 static gchar cmd_clear_desc[]         = "clear: clear the console\n";
 static gchar cmd_clear_usage[]        = "clear: usage: clear\n";
+#ifdef __HAVE_WEBKIT2__
+static gchar cmd_clear_cache_desc[]   = "clear-cache: clear all cached resources\n";
+static gchar cmd_clear_cache_usage[]  = "clear-cache: usage: clear\n";
+#endif
 static gchar cmd_dl_cancel_desc[]     = "dl-cancel: cancel the specified downloads, or all downloads if no arguments are given\n";
 static gchar cmd_dl_cancel_usage[]    = "dl-cancel: usage: dl-cancel [id ...]\n";
 static gchar cmd_dl_clear_desc[]      = "dl-clear: cancel and remove the specified downloads, or all downloads if no arguments are given\n";
@@ -135,6 +139,9 @@ static struct command commands[] = {
 	{ "alias",           cmd_alias_desc,        cmd_alias_usage,        cmd_alias },
 	{ "bind",            cmd_bind_desc,         cmd_bind_usage,         cmd_bind },
 	{ "clear",           cmd_clear_desc,        cmd_clear_usage,        cmd_clear },
+#ifdef __HAVE_WEBKIT2__
+	{ "clear-cache",     cmd_clear_cache_desc,  cmd_clear_cache_usage,  cmd_clear_cache },
+#endif
 	{ "dl-clear",        cmd_dl_clear_desc,     cmd_dl_clear_usage,     cmd_dl_clear },
 	{ "dl-cancel",       cmd_dl_cancel_desc,    cmd_dl_cancel_usage,    cmd_dl_cancel },
 	{ "dl-new",          cmd_dl_new_desc,       cmd_dl_new_usage,       cmd_dl_new },
