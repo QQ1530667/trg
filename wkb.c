@@ -738,7 +738,7 @@ static struct download * new_download(WebKitDownload *d, const gchar *filename)
 {
 	gchar *file_uri;
 	struct download *dl;
-	GtkWidget *dialog = gtk_file_chooser_dialog_new("Download", NULL, GTK_FILE_CHOOSER_ACTION_SAVE, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT, NULL);
+	GtkWidget *dialog = gtk_file_chooser_dialog_new("Download", NULL, GTK_FILE_CHOOSER_ACTION_SAVE, "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
 	GtkWidget *auto_open = gtk_check_button_new_with_label("Auto open");
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(auto_open), global.dl_auto_open);
 	gtk_file_chooser_set_extra_widget(GTK_FILE_CHOOSER(dialog), auto_open);
@@ -2851,7 +2851,7 @@ static union wkb_setting get_fc_dir(struct wkb *w, int context)
 {
 	GtkWidget *dialog;
 	if (context != WKB_VAR_CONTEXT_EXPAND) return (union wkb_setting) { .s = NULL };
-	dialog = gtk_file_chooser_dialog_new("Choose Directory", NULL, GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+	dialog = gtk_file_chooser_dialog_new("Choose Directory", NULL, GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		g_free(global.fc_tmp);
 		global.fc_tmp = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
@@ -2866,7 +2866,7 @@ static union wkb_setting get_fc_file(struct wkb *w, int context)
 {
 	GtkWidget *dialog;
 	if (context != WKB_VAR_CONTEXT_EXPAND) return (union wkb_setting) { .s = NULL };
-	dialog = gtk_file_chooser_dialog_new("Choose File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+	dialog = gtk_file_chooser_dialog_new("Choose File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		g_free(global.fc_tmp);
 		global.fc_tmp = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
