@@ -22,6 +22,17 @@ enum {
 };
 
 enum {
+	MOD_USE_SHIFT = 1<<0,
+	MOD_SHIFT     = 1<<1,
+	MOD_CONTROL   = 1<<2,
+	MOD_MOD1      = 1<<3,
+	MOD_MOD2      = 1<<4,
+	MOD_MOD3      = 1<<5,
+	MOD_MOD4      = 1<<6,
+	MOD_MOD5      = 1<<7,
+};
+
+enum {
 	BAR_STATUS_PAGE = 0,
 	BAR_INPUT_PAGE = 1,
 };
@@ -180,13 +191,14 @@ static void exec_line(struct wkb *, WebKitWebView *, const gchar *);
 static struct alias * get_alias(struct wkb *, const gchar *);
 static struct bind * get_bind(struct wkb *, guint, guint, const gchar *);
 static struct download * get_download(int);
-static gchar * get_mod_string(guint, gchar [7]);
+static gchar * get_mod_string(guint, gchar [8]);
 static gchar * get_mode_string(guint, gchar [5]);
 static struct var * get_var(struct wkb *, const gchar *);
 static GObject * get_var_gobject(struct wkb *, WebKitWebView *, struct var *, gchar **);
 static gchar * get_var_value(struct wkb *, WebKitWebView *, struct var *, int context);
 static struct default_wkb_setting * get_wkb_setting(struct wkb *, const gchar *);
 static void init_cmd_fifo(struct wkb *);
+static int modmask_compare(guint, guint);
 static void navigate(struct wkb *, WebKitWebView *, int);
 static struct alias * new_alias(struct wkb *, const gchar *, const gchar *);
 static struct bind * new_bind(struct wkb *);
@@ -625,16 +637,20 @@ static struct download * get_download(int id)
 	return NULL;
 }
 
-static gchar * get_mod_string(guint mod, gchar str_mod[7])
+static gchar * get_mod_string(guint mod, gchar str_mod[8])
 {
-	memset(str_mod, '-', 6);
-	str_mod[6] = '\0';
-	if (mod & GDK_CONTROL_MASK)  str_mod[0] = 'c';
-	if (mod & GDK_MOD1_MASK)     str_mod[1] = '1';
-	if (mod & GDK_MOD2_MASK)     str_mod[2] = '2';
-	if (mod & GDK_MOD3_MASK)     str_mod[3] = '3';
-	if (mod & GDK_MOD4_MASK)     str_mod[4] = '4';
-	if (mod & GDK_MOD5_MASK)     str_mod[5] = '5';
+	memset(str_mod, '-', 7);
+	str_mod[7] = '\0';
+	if (mod & MOD_USE_SHIFT) {
+		if (mod & MOD_SHIFT) str_mod[0] = 's';
+		else str_mod[0] = 'S';
+	}
+	if (mod & MOD_CONTROL)  str_mod[1] = 'c';
+	if (mod & MOD_MOD1)     str_mod[2] = '1';
+	if (mod & MOD_MOD2)     str_mod[3] = '2';
+	if (mod & MOD_MOD3)     str_mod[4] = '3';
+	if (mod & MOD_MOD4)     str_mod[5] = '4';
+	if (mod & MOD_MOD5)     str_mod[6] = '5';
 	return str_mod;
 }
 
@@ -706,6 +722,22 @@ static void init_cmd_fifo(struct wkb *w)
 	}
 	w->cmd_fifo_ioch = g_io_channel_unix_new(fd);
 	w->cmd_fifo_ioch_sid = g_io_add_watch(w->cmd_fifo_ioch, G_IO_IN | G_IO_HUP, (GIOFunc) cb_cmd_fifo_in, w);
+}
+
+static int modmask_compare(guint mod, guint gdk_state)
+{
+	guint m = 0;
+	if (mod & MOD_USE_SHIFT) {
+		m |= MOD_USE_SHIFT;
+		if (gdk_state & GDK_SHIFT_MASK) m |= MOD_SHIFT;
+	}
+	if (gdk_state & GDK_CONTROL_MASK) m |= MOD_CONTROL;
+	if (gdk_state & GDK_MOD1_MASK)    m |= MOD_MOD1;
+	if (gdk_state & GDK_MOD2_MASK)    m |= MOD_MOD2;
+	if (gdk_state & GDK_MOD3_MASK)    m |= MOD_MOD3;
+	if (gdk_state & GDK_MOD4_MASK)    m |= MOD_MOD4;
+	if (gdk_state & GDK_MOD5_MASK)    m |= MOD_MOD5;
+	return m == mod;
 }
 
 static void navigate(struct wkb *w, WebKitWebView *v, int n)
@@ -1131,6 +1163,8 @@ static void parse_mode_and_mod_mask(struct wkb *w, const gchar *mode_str, const 
 	for (i = 0; i < strlen(mod_str); ++i) {
 		switch (mod_str[i]) {
 			case '-': break;
+			case 'S': *mod |= MOD_USE_SHIFT; *mod &= ~MOD_SHIFT; break;
+			case 's': *mod |= MOD_USE_SHIFT|MOD_SHIFT; break;
 			case 'c': *mod |= GDK_CONTROL_MASK; break;
 			case '1': *mod |= GDK_MOD1_MASK; break;
 			case '2': *mod |= GDK_MOD2_MASK; break;
@@ -1144,7 +1178,7 @@ static void parse_mode_and_mod_mask(struct wkb *w, const gchar *mode_str, const 
 
 static void print_bind(struct wkb *w, struct bind *b)
 {
-	gchar str_mode[5], str_mod[7];
+	gchar str_mode[5], str_mod[8];
 	get_mode_string(b->mode, str_mode);
 	get_mod_string(b->mod, str_mod);
 	if (b->arg == NULL) g_free(out(w, TRUE, g_strdup_printf("%s  %s  %-10s  %s\n", str_mode, str_mod, b->key, b->handler->name)));
@@ -1571,13 +1605,13 @@ static GtkWidget * cb_inspect_web_view(GtkWidget *i, GtkWidget *wv, struct wkb *
 static gboolean cb_keypress(WebKitWebView *wv, GdkEventKey *ev, struct wkb *w)
 {
 	struct bind *b;
-	gchar str_mod[7];
+	gchar str_mod[8];
 	if (w->print_keyval)
 		g_free(out(w, FALSE, g_strdup_printf("modifiers: %s | key: \"%s\"\n", get_mod_string(CLEAN_MASK(ev->state, ev->keyval), str_mod), gdk_keyval_name(ev->keyval))));
 	if (gdk_keyval_name(ev->keyval) != NULL) {
 		LIST_FOREACH(&global.binds, b) {
 			if (b->mode & w->mode
-					&& b->mod == CLEAN_MASK(ev->state, ev->keyval)
+					&& modmask_compare(b->mod, ev->state)
 					&& strcmp(b->key, gdk_keyval_name(ev->keyval)) == 0) {
 				return b->handler->func(w, b);
 			}

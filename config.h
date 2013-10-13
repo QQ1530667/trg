@@ -46,7 +46,7 @@ static gchar cmd_add_ss_usage[]       = "add-stylesheet: usage: add-stylesheet <
 static gchar cmd_alias_desc[]         = "alias: define an alias, print the alias definition if no value is given, or list aliases if no arguments are given\n";
 static gchar cmd_alias_usage[]        = "alias: usage: alias [<name> [value]]\n";
 static gchar cmd_bind_desc[]          = "bind: bind a key to a handler, print matching binds if no handler is given, or list bindings if no arguments are given\n";
-static gchar cmd_bind_usage[]         = "bind: usage: bind [<modes:a,n,c,i,p> <modifiers:-,c,1,2,3,4,5> <key> [<handler> [arg]]]\n";
+static gchar cmd_bind_usage[]         = "bind: usage: bind [<modes:a,n,c,i,p> <modifiers:-,s|S,c,1,2,3,4,5> <key> [<handler> [arg]]]\n";
 static gchar cmd_clear_desc[]         = "clear: clear the console\n";
 static gchar cmd_clear_usage[]        = "clear: usage: clear\n";
 #ifdef __HAVE_WEBKIT2__
@@ -120,7 +120,7 @@ static gchar cmd_topen_usage[]        = "topen: usage: topen [uri-]\n";
 static gchar cmd_unalias_desc[]       = "unalias: remove an alias definition\n";
 static gchar cmd_unalias_usage[]      = "unalias: usage: unalias <name>\n";
 static gchar cmd_unbind_desc[]        = "unbind: unbind a key\n";
-static gchar cmd_unbind_usage[]       = "unbind: usage: unbind <modes:a,n,c,i,p> <modifiers:-,c,1,2,3,4,5> <key>\n";
+static gchar cmd_unbind_usage[]       = "unbind: usage: unbind <modes:a,n,c,i,p> <modifiers:-,s|S,c,1,2,3,4,5> <key>\n";
 static gchar cmd_unset_desc[]         = "unset: unset a variable\n";
 static gchar cmd_unset_usage[]        = "unset: usage: unset <name>\n";
 static gchar cmd_wclose_desc[]        = "wclose: close the current window\n";
@@ -297,6 +297,8 @@ static const gchar *builtin_config[] = {
 	"bind n c f run \"js window.scrollBy(0, window.innerHeight)\"",
 	"bind n c u run \"js window.scrollBy(0, -window.innerHeight / 2)\"",
 	"bind n c d run \"js window.scrollBy(0, window.innerHeight / 2)\"",
+	"bind n s space run \"js window.scrollBy(0, -window.innerHeight / 2)\"",
+	"bind n S space run \"js window.scrollBy(0, window.innerHeight / 2)\"",
 	"bind n - Home run \"js window.scrollBy(0, -document.height)\"",
 	"bind n - End run \"js window.scrollBy(0, document.height)\"",
 	"bind n - 0 run \"js window.scrollBy(-document.width, 0)\"",
