@@ -38,9 +38,6 @@ var img_hover = {
 	},
 
 	init:function() {
-		document.addEventListener('mousemove', img_hover.document_mouse_move, false);
-		img_hover.prepare_links(document.getElementsByTagName('A'));
-
 		img_hover.imagediv = document.createElement('div');
 		img_hover.imagelink = document.createElement('a');
 		img_hover.image = document.createElement('img');
@@ -64,6 +61,15 @@ var img_hover = {
 		img_hover.imagediv.hidden = true;
 
 		document.body.appendChild(img_hover.imagediv);
+
+		document.addEventListener('mousemove', img_hover.document_mouse_move, false);
+		document.addEventListener('DOMNodeInserted', function(e) {
+			if (e.target.tagName === 'A')
+				img_hover.prepare_links(e.target);
+			else if (e.target.getElementsByTagName)
+				img_hover.prepare_links(e.target.getElementsByTagName('A'));
+		}, false);
+		img_hover.prepare_links(document.getElementsByTagName('A'));
 	},
 }
 
