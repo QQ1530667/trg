@@ -43,7 +43,7 @@ var img_hover = {
 
 		img_hover.imagediv = document.createElement('div');
 		img_hover.imagelink = document.createElement('a');
-		img_hover.image = document.createElement('image');
+		img_hover.image = document.createElement('img');
 
 		img_hover.imagelink.appendChild(img_hover.image);
 		img_hover.imagediv.appendChild(img_hover.imagelink);
