@@ -35,7 +35,7 @@ spawn-sync "{wkb.config-dir}/load_plugins.sh"
 
 # Binds
 bind nci c p run "print"
-bind n - M run "spawn \{term} -e mplayer -cache 32768 -cache-min 2 -cache-seek-min 1 \{uri}"
+bind n - M run "spawn \{term} -e mpv \{uri}"
 bind nci 1 b run "open bm"
 bind nci 1 B run "topen bm"
 bind nci 1 c run "spawn \{term} -e dash -c \"cat > \{wkb.cmd-fifo}\""
