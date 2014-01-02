@@ -1,6 +1,7 @@
 var img_hover_plugins = img_hover_plugins || [];
 
-var img_hover = {
+var img_hover = img_hover || {
+	loaded:false,
 	imagediv:null,
 	imagelink:null,
 	image:null,
@@ -13,7 +14,8 @@ var img_hover = {
 		img_hover.image.style.maxWidth = (window.innerWidth - 22) + 'px';
 		img_hover.image.style.maxHeight = (window.innerHeight - 22) + 'px';
 		img_hover.current_element = element;
-		if (img_hover.timeout_var) window.clearTimeout(img_hover.timeout_var);
+		if (img_hover.timeout_var)
+			window.clearTimeout(img_hover.timeout_var);
 		img_hover.timeout_var = window.setTimeout(function() {
 				img_hover.imagediv.hidden = false;
 				img_hover.timeout_var = null;
@@ -25,7 +27,8 @@ var img_hover = {
 			var rect = img_hover.current_element.getBoundingClientRect();
 			if (event.clientY < rect.top || event.clientY > rect.bottom
 					|| event.clientX < rect.left || event.clientX > rect.right) {
-				if (img_hover.timeout_var) window.clearTimeout(img_hover.timeout_var);
+				if (img_hover.timeout_var)
+					window.clearTimeout(img_hover.timeout_var);
 				img_hover.imagediv.hidden = true;
 				img_hover.current_element = null;
 			}
@@ -70,7 +73,9 @@ var img_hover = {
 				img_hover.prepare_links(e.target.getElementsByTagName('A'));
 		}, false);
 		img_hover.prepare_links(document.getElementsByTagName('A'));
+		img_hover.loaded = true;
 	},
 }
 
-img_hover.init();
+if (!img_hover.loaded)
+	img_hover.init();
