@@ -1989,7 +1989,7 @@ static int cmd_find(struct wkb *w, WebKitWebView *wv, struct command *c, int arg
 	}
 #ifdef __HAVE_WEBKIT2__
 	WebKitFindController *fc = webkit_web_view_get_find_controller(wv);
-	webkit_find_controller_search(fc, (w->find_string == NULL) ? "": w->find_string, WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE|((argv[0][0] == 'r') ? WEBKIT_FIND_OPTIONS_BACKWARDS : 0)|WEBKIT_FIND_OPTIONS_WRAP_AROUND, 0);
+	webkit_find_controller_search(fc, (w->find_string == NULL) ? "": w->find_string, WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE|((argv[0][0] == 'r') ? WEBKIT_FIND_OPTIONS_BACKWARDS : 0)|WEBKIT_FIND_OPTIONS_WRAP_AROUND, G_MAXUINT);
 #else
 	webkit_web_view_unmark_text_matches(wv);
 	if (w->find_string != NULL) {
