@@ -306,7 +306,7 @@ static const gchar *builtin_config[] = {
 	"set XDG_CONFIG_HOME_DEFAULT \"{HOME}/.config\"",
 	"nset "VAR_CONFIG_DIR" \"{XDG_CONFIG_HOME:XDG_CONFIG_HOME_DEFAULT}/wkb\"",
 	"nset "VAR_DOWNLOAD_DIR" \"{HOME}\"",
-	"nset "VAR_DL_OPEN_CMD" \"exec xdg-open \\\"%f\\\"\"",
+	"nset "VAR_DL_OPEN_CMD" \"spawn xdg-open \\\"%f\\\"\"",
 	"nset "VAR_COOKIE_FILE" \"{"VAR_CONFIG_DIR"}/cookies.txt\"",
 #ifdef __HAVE_WEBKIT2__
 	"add-stylesheet \"@import url('file://{"VAR_CONFIG_DIR"}/stylesheet.css');\" \"\" \"\" \"\"",
