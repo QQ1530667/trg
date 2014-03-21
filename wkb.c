@@ -2976,6 +2976,7 @@ int main(int argc, char *argv[])
 	memset(&global, 0, sizeof(global));
 	gtk_init(NULL, NULL);
 #ifdef __HAVE_WEBKIT2__
+	webkit_web_context_set_process_model(webkit_web_context_get_default(), WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 	global.settings = webkit_settings_new();
 	g_signal_connect(webkit_web_context_get_default(), "download-started", G_CALLBACK(cb_download), NULL);
 #else
