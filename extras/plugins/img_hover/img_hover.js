@@ -22,17 +22,24 @@ var img_hover = img_hover || {
 			}, 150);
 	},
 
-	document_mouse_move:function(event) {
+	document_mouse_move:function(e) {
 		if (img_hover.current_element) {
 			var rect = img_hover.current_element.getBoundingClientRect();
-			if (event.clientY < rect.top || event.clientY > rect.bottom
-					|| event.clientX < rect.left || event.clientX > rect.right) {
+			if (e.clientY < rect.top || e.clientY > rect.bottom
+					|| e.clientX < rect.left || e.clientX > rect.right) {
 				if (img_hover.timeout_var)
 					window.clearTimeout(img_hover.timeout_var);
 				img_hover.imagediv.hidden = true;
 				img_hover.current_element = null;
 			}
 		}
+	},
+
+	document_mutation:function(e) {
+		if (e.target.tagName === 'A')
+			img_hover.prepare_links(e.target);
+		else if (e.target.getElementsByTagName)
+			img_hover.prepare_links(e.target.getElementsByTagName('A'));
 	},
 
 	prepare_links:function(links) {
@@ -66,12 +73,10 @@ var img_hover = img_hover || {
 		document.body.appendChild(img_hover.imagediv);
 
 		document.addEventListener('mousemove', img_hover.document_mouse_move, false);
-		document.addEventListener('DOMNodeInserted', function(e) {
-			if (e.target.tagName === 'A')
-				img_hover.prepare_links(e.target);
-			else if (e.target.getElementsByTagName)
-				img_hover.prepare_links(e.target.getElementsByTagName('A'));
-		}, false);
+		var observer = new MutationObserver(function(mutations) {
+			mutations.forEach(img_hover.document_mutation);
+		});
+		observer.observe(document.body, { childList:true, attributes:true, subtree:true, attributeFilter:['href'] });
 		img_hover.prepare_links(document.getElementsByTagName('A'));
 		img_hover.loaded = true;
 	},
