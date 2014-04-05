@@ -1,4 +1,5 @@
 # Aliases
+alias sc "nset s.enable-scripts"
 alias ja "nset s.enable-java-applet"
 alias fcz "nset v.full-content-zoom"
 alias sca "nset soup.ssl-use-system-ca-file"

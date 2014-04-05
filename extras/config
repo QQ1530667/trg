@@ -1,5 +1,4 @@
 # Aliases
-alias sc "nset s.enable-scripts"
 alias pl "nset s.enable-plugins"
 alias pc "nset s.enable-page-cache"
 alias cf "nset wkb.cookie-file"
