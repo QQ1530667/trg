@@ -27,6 +27,7 @@ static const gchar null_title[]      = "Untitled";
 #ifdef __HAVE_WEBKIT2__
 #define VAR_SPELL_LANGS    "wkb.spellcheck-langs"
 #define VAR_SPELL          "wkb.spellcheck"
+#define VAR_TLS_ERRORS     "wkb.tls-errors"
 #endif
 #define VAR_FIND_STRING    "wkb.find"
 #define VAR_HOMEPAGE       "wkb.homepage"
@@ -213,6 +214,7 @@ static struct default_wkb_setting default_wkb_settings[] = {
 #ifdef __HAVE_WEBKIT2__
 	{ VAR_SPELL_LANGS,     WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_spell_langs,     set_spell_langs,     { .s = NULL } },
 	{ VAR_SPELL,           WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_BOOL,    get_spell,           set_spell,           { .b = FALSE } },
+	{ VAR_TLS_ERRORS,      WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_BOOL,    get_tls_errors,      set_tls_errors,      { .b = TRUE } },
 #endif
 	{ VAR_FIND_STRING,     WKB_SETTING_SCOPE_WINDOW,  WKB_SETTING_TYPE_STRING,  get_find_string,     set_find_string,     { .s = NULL } },
 	{ VAR_HOMEPAGE,        WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_homepage,        set_homepage,        { .s = NULL } },

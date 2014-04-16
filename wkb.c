@@ -357,6 +357,8 @@ static union wkb_setting get_spell_langs(struct wkb *, int);
 static void set_spell_langs(struct wkb *, union wkb_setting);
 static union wkb_setting get_spell(struct wkb *, int);
 static void set_spell(struct wkb *, union wkb_setting);
+static union wkb_setting get_tls_errors(struct wkb *, int);
+static void set_tls_errors(struct wkb *, union wkb_setting);
 #endif
 static union wkb_setting get_find_string(struct wkb *, int);
 static void set_find_string(struct wkb *, union wkb_setting);
@@ -2845,6 +2847,16 @@ static union wkb_setting get_spell(struct wkb *w, int context)
 static void set_spell(struct wkb *w, union wkb_setting v)
 {
 	webkit_web_context_set_spell_checking_enabled(webkit_web_view_get_context(GET_CURRENT_VIEW(w)), v.b);
+}
+
+static union wkb_setting get_tls_errors(struct wkb *w, int context)
+{
+	return (union wkb_setting) { .b = (webkit_web_context_get_tls_errors_policy(webkit_web_view_get_context(GET_CURRENT_VIEW(w))) == WEBKIT_TLS_ERRORS_POLICY_FAIL) };
+}
+
+static void set_tls_errors(struct wkb *w, union wkb_setting v)
+{
+	webkit_web_context_set_tls_errors_policy(webkit_web_view_get_context(GET_CURRENT_VIEW(w)), (v.b) ? WEBKIT_TLS_ERRORS_POLICY_FAIL : WEBKIT_TLS_ERRORS_POLICY_IGNORE);
 }
 #endif
 

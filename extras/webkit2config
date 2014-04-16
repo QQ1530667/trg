@@ -2,6 +2,7 @@
 alias sc "nset s.enable-javascript"
 alias zt "nset s.zoom-text-only"
 alias ja "nset s.enable-java"
+alias te "nset wkb.tls-errors"
 
 # Settings
 nset s.enable-java f
