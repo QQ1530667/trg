@@ -204,7 +204,7 @@ static struct alias * new_alias(struct wkb *, const gchar *, const gchar *);
 static struct bind * new_bind(struct wkb *);
 static struct download * new_download(WebKitDownload *, const gchar *);
 static struct hist * new_hist(struct wkb *, const gchar *);
-static GtkWidget * new_tab(struct wkb *, const gchar *);
+static GtkWidget * new_tab(struct wkb *, WebKitWebView *, const gchar *);
 static struct var * new_var(struct wkb *, const gchar *, int);
 static struct wkb * new_window(struct wkb *, const gchar *);
 static void open_download(struct wkb *, WebKitWebView *, struct download *, const gchar *);
@@ -809,11 +809,11 @@ static struct hist * new_hist(struct wkb *w, const gchar *line)
 	return h;
 }
 
-static GtkWidget * new_tab(struct wkb *w, const gchar *uri)
+static GtkWidget * new_tab(struct wkb *w, WebKitWebView *v, const gchar *uri)
 {
 	GtkWidget *wv, *child;
 	struct tab *t;
-	wv = webkit_web_view_new();
+	wv = (v == NULL) ? webkit_web_view_new() : GTK_WIDGET(v);
 	webkit_web_view_set_settings(WEBKIT_WEB_VIEW(wv), global.settings);
 	gtk_widget_show(wv);
 #ifdef __HAVE_WEBKIT2__
@@ -967,7 +967,7 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 	gtk_notebook_set_tab_border(GTK_NOTEBOOK(w->nb), 0);
 #endif
 
-	new_tab(w, uri);
+	new_tab(w, NULL, uri);
 	set_mode(w, MODE_CMD);  /* workaround for GTK3 incorrectly calculating the size of w->i */
 	set_mode(w, MODE_NORMAL);
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
@@ -1432,7 +1432,7 @@ static gboolean cb_cmd_fifo_in(GIOChannel *s, GIOCondition c, struct wkb *w)
 #ifdef __HAVE_WEBKIT2__
 static GtkWidget * cb_create(WebKitWebView *wv, struct wkb *w)
 {
-	if (global.allow_popups) return new_tab(w, NULL);
+	if (global.allow_popups) return new_tab(w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL);
 	else return NULL;
 }
 
@@ -1445,7 +1445,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 			if (webkit_navigation_policy_decision_get_modifiers(nd) & GDK_SHIFT_MASK)
 				new_window(g_malloc0(sizeof(struct wkb)), webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
 			else
-				new_tab(w, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
+				new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
 			webkit_policy_decision_ignore(d);
 			return TRUE;
 		}
@@ -1453,7 +1453,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 	else if (dt == WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION) {
 		nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
 		if (webkit_navigation_policy_decision_get_navigation_type(nd) == WEBKIT_NAVIGATION_TYPE_LINK_CLICKED) {
-			new_tab(w, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
+			new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
 			webkit_policy_decision_ignore(d);
 			return TRUE;
 		}
@@ -1468,7 +1468,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 #else
 static GtkWidget * cb_create(WebKitWebView *wv, WebKitWebFrame *f, struct wkb *w)
 {
-	if (global.allow_popups) return new_tab(w, NULL);
+	if (global.allow_popups) return new_tab(w, NULL, NULL);
 	else return NULL;
 }
 
@@ -1485,7 +1485,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitWebFrame *f, WebKitNet
 		if (webkit_web_navigation_action_get_modifier_state(na) & GDK_SHIFT_MASK)
 			new_window(g_malloc0(sizeof(struct wkb)), webkit_network_request_get_uri(r));
 		else
-			new_tab(w, webkit_network_request_get_uri(r));
+			new_tab(w, NULL, webkit_network_request_get_uri(r));
 		webkit_web_policy_decision_ignore(d);
 		return TRUE;
 	}
@@ -1495,7 +1495,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitWebFrame *f, WebKitNet
 static gboolean cb_decide_window(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, WebKitWebNavigationAction *na, WebKitWebPolicyDecision *d, struct wkb *w)
 {
 	if (webkit_web_navigation_action_get_reason(na) == WEBKIT_WEB_NAVIGATION_REASON_LINK_CLICKED) {
-		new_tab(w, webkit_network_request_get_uri(r));
+		new_tab(w, NULL, webkit_network_request_get_uri(r));
 		webkit_web_policy_decision_ignore(d);
 		return TRUE;
 	}
@@ -2350,10 +2350,10 @@ static int cmd_tclose(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 static int cmd_topen(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str;
-	if (argc <= 1) new_tab(w, global.homepage);
+	if (argc <= 1) new_tab(w, NULL, global.homepage);
 	else {
 		str = concat_args(argc, argv);
-		new_tab(w, str->str);
+		new_tab(w, NULL, str->str);
 		g_string_free(str, TRUE);
 	}
 	return 0;
