@@ -27,8 +27,10 @@ var img_hover = img_hover || {
 			var rect = img_hover.current_element.getBoundingClientRect();
 			if (e.clientY < rect.top || e.clientY > rect.bottom
 					|| e.clientX < rect.left || e.clientX > rect.right) {
-				if (img_hover.timeout_var)
+				if (img_hover.timeout_var) {
 					window.clearTimeout(img_hover.timeout_var);
+					img_hover.timeout_var = null;
+				}
 				img_hover.imagediv.hidden = true;
 				img_hover.current_element = null;
 			}
@@ -36,10 +38,19 @@ var img_hover = img_hover || {
 	},
 
 	document_mutation:function(e) {
-		if (e.target.tagName === 'A')
-			img_hover.prepare_links(e.target);
-		else if (e.target.getElementsByTagName)
-			img_hover.prepare_links(e.target.getElementsByTagName('A'));
+		if (e.type == 'attributes') {
+			if (e.target.tagName === 'A' && e.target !== img_hover.imagelink)
+				img_hover.prepare_links(e.target);
+		}
+		else if (e.type == 'childList') {
+			for (var i = 0; i < e.addedNodes.length; ++i) {
+				var n = e.addedNodes[i];
+				if (n.tagName === 'A')
+					img_hover.prepare_links(n);
+				else if (n.getElementsByTagName)
+					img_hover.prepare_links(n.getElementsByTagName('A'));
+			}
+		}
 	},
 
 	prepare_links:function(links) {
