@@ -5,11 +5,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <gtk/gtk.h>
-#ifdef __HAVE_WEBKIT2__
 #include <webkit2/webkit2.h>
-#else
-#include <webkit/webkit.h>
-#endif
 #include <JavaScriptCore/JavaScript.h>
 #include "list.h"
 
@@ -69,12 +65,8 @@ static struct {
 	gchar *config_dir, *cookie_file, *cookie_policy, *download_dir,
 		*dl_open_cmd, *homepage, *fc_tmp, *clipboard_tmp,
 		*load_started, *load_finished, *dom_ready, *create;
-#ifdef __HAVE_WEBKIT2__
 	gchar *spell_langs;
 	WebKitSettings *settings;
-#else
-	WebKitWebSettings *settings;
-#endif
 } global;
 
 struct wkb {
@@ -228,39 +220,18 @@ static void update_uri_l(struct wkb *, const gchar *, const gchar *);
 
 /* Callback functions */
 static gboolean cb_cmd_fifo_in(GIOChannel *, GIOCondition, struct wkb *);
-#ifdef __HAVE_WEBKIT2__
 static GtkWidget * cb_create(WebKitWebView *, struct wkb *);
 static gboolean cb_decide_policy(WebKitWebView *, WebKitPolicyDecision *, WebKitPolicyDecisionType, struct wkb *);
-#else
-static GtkWidget * cb_create(WebKitWebView *, WebKitWebFrame *, struct wkb *);
-static gboolean cb_decide_mime(WebKitWebView *, WebKitWebFrame *, WebKitNetworkRequest *, gchar *, WebKitWebPolicyDecision *, struct wkb *);
-static gboolean cb_decide_policy(WebKitWebView *, WebKitWebFrame *, WebKitNetworkRequest *, WebKitWebNavigationAction *, WebKitWebPolicyDecision *, struct wkb *);
-static gboolean cb_decide_window(WebKitWebView *, WebKitWebFrame *, WebKitNetworkRequest *, WebKitWebNavigationAction *, WebKitWebPolicyDecision *, struct wkb *);
-#endif
 static void cb_destroy(WebKitWebView *, struct wkb *);
-#ifdef __HAVE_WEBKIT2__
 static void cb_download(WebKitWebContext *, WebKitDownload *, void *);
 static gboolean cb_download_decide_destination(WebKitDownload *, gchar *, void *);
 static void cb_download_failed(WebKitDownload *, GError *, struct download *);
 static void cb_download_finished(WebKitDownload *, struct download *);
-#else
-static gboolean cb_download(WebKitWebView *, WebKitDownload *, struct wkb *);
-static void cb_download_status_changed(WebKitDownload *, GParamSpec *p, struct download *);
-static void cb_document_load_finished(WebKitWebView *, WebKitWebFrame *, struct wkb *);
-#endif
 static void cb_console_size_allocate(WebKitWebView *, GdkRectangle *, struct wkb *);
 static void cb_input_end(WebKitWebView *, struct wkb *);
-#ifndef __HAVE_WEBKIT2__
-static GtkWidget * cb_inspect_web_view(GtkWidget *, GtkWidget *, struct wkb *);
-#endif
 static gboolean cb_keypress(WebKitWebView *, GdkEventKey *, struct wkb *);
-#ifdef __HAVE_WEBKIT2__
 static void cb_load_changed(WebKitWebView *, WebKitLoadEvent, struct wkb *);
 static void cb_mouse_target_changed(WebKitWebView *, WebKitHitTestResult *, guint, struct wkb *);
-#else
-static void cb_load_changed(WebKitWebView *, GParamSpec *, struct wkb *);
-static void cb_mouse_target_changed(WebKitWebView *, gchar *, gchar *, struct wkb *);
-#endif
 static void cb_progress_changed(WebKitWebView *, GParamSpec *, struct wkb *);
 static void cb_tab_changed(WebKitWebView *, GtkWidget *, guint, struct wkb *);
 static void cb_title_changed(WebKitWebView *, GParamSpec *, struct wkb *);
@@ -273,15 +244,11 @@ static gboolean bind_pass(struct wkb *, struct bind *);
 static gboolean bind_run(struct wkb *, struct bind *);
 
 /* Command functions */
-#ifdef __HAVE_WEBKIT2__
 static int cmd_add_ss(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-#endif
 static int cmd_alias(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_bind(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_clear(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-#ifdef __HAVE_WEBKIT2__
 static int cmd_clear_cache(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-#endif
 static int cmd_dl_cancel(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_dl_clear(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_dl_new(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
@@ -352,14 +319,12 @@ static union wkb_setting get_default_width(struct wkb *, int);
 static void set_default_width(struct wkb *, union wkb_setting);
 static union wkb_setting get_default_height(struct wkb *, int);
 static void set_default_height(struct wkb *, union wkb_setting);
-#ifdef __HAVE_WEBKIT2__
 static union wkb_setting get_spell_langs(struct wkb *, int);
 static void set_spell_langs(struct wkb *, union wkb_setting);
 static union wkb_setting get_spell(struct wkb *, int);
 static void set_spell(struct wkb *, union wkb_setting);
 static union wkb_setting get_tls_errors(struct wkb *, int);
 static void set_tls_errors(struct wkb *, union wkb_setting);
-#endif
 static union wkb_setting get_find_string(struct wkb *, int);
 static void set_find_string(struct wkb *, union wkb_setting);
 static union wkb_setting get_homepage(struct wkb *, int);
@@ -383,18 +348,13 @@ static void set_create(struct wkb *, union wkb_setting);
 
 #define LENGTH(x) (sizeof(x) / sizeof(x[0]))
 #define PARSE_ERROR(_cond, _m, _l, _r) if (_cond) { ret = _r; _m; goto _l; }
-#ifdef __HAVE_WEBKIT2__
 #define GET_VIEW_FROM_CHILD(c) WEBKIT_WEB_VIEW(c)
-#else
-#define GET_VIEW_FROM_CHILD(c) WEBKIT_WEB_VIEW(gtk_bin_get_child(GTK_BIN(c)))
-#endif
 #define GET_NTH_VIEW(w, n) GET_VIEW_FROM_CHILD(gtk_notebook_get_nth_page(GTK_NOTEBOOK(w->nb), n))
 #define GET_CURRENT_TAB(w) ((struct tab *) (w)->tabs.h)
 #define GET_CURRENT_TAB_CHILD(w) ((GET_CURRENT_TAB(w) == NULL) ? NULL : GET_CURRENT_TAB(w)->c)
 #define GET_CURRENT_VIEW(w) GET_VIEW_FROM_CHILD(GET_CURRENT_TAB_CHILD(w))
 #define SELECT_VIEW(w, wv) ((wv == NULL) ? GET_CURRENT_VIEW(w) : wv)
 #define CLEAN_MASK(m, k) (m & (GDK_CONTROL_MASK | GDK_MOD1_MASK | GDK_MOD2_MASK | GDK_MOD3_MASK | GDK_MOD4_MASK | GDK_MOD5_MASK))
-#ifdef __HAVE_WEBKIT2__
 enum {
 	DOWNLOAD_STATUS_FINISHED = -1,
 	DOWNLOAD_STATUS_ACTIVE = 0,
@@ -403,9 +363,6 @@ enum {
 	DOWNLOAD_STATUS_ERROR_DEST = WEBKIT_DOWNLOAD_ERROR_DESTINATION,
 };
 #define DOWNLOAD_IS_ACTIVE(s) (s == DOWNLOAD_STATUS_ACTIVE)
-#else
-#define DOWNLOAD_IS_ACTIVE(s) (s == WEBKIT_DOWNLOAD_STATUS_CREATED || s == WEBKIT_DOWNLOAD_STATUS_STARTED)
-#endif
 
 /* Begin internal functions */
 
@@ -420,11 +377,7 @@ static void add_gobject_properties(struct wkb *w, struct var_handler *vh, GObjec
 	ps = g_object_class_list_properties(G_OBJECT_GET_CLASS(obj), &n_prop);
 	for (i = 0; i < n_prop; ++i) {
 		t = G_PARAM_SPEC_VALUE_TYPE(ps[i]);
-#ifdef __HAVE_WEBKIT2__
 		if (t == G_TYPE_BOOLEAN || t == G_TYPE_INT || t == G_TYPE_UINT || t == G_TYPE_DOUBLE || t == G_TYPE_FLOAT || t == G_TYPE_STRING) {
-#else
-		if (t == G_TYPE_BOOLEAN || t == G_TYPE_INT || t == G_TYPE_UINT || t == G_TYPE_DOUBLE || t == G_TYPE_FLOAT || t == G_TYPE_STRING || t == SOUP_TYPE_URI) {
-#endif
 			new_var(w, temp = g_strdup_printf(fmt, g_param_spec_get_name(ps[i])), 0)->handler = vh;
 			g_free(temp);
 		}
@@ -550,20 +503,7 @@ static GString * escape_string(const gchar *s)
 
 static void eval_js(WebKitWebView *wv, const gchar *script, const gchar *source, int use_focused_frame)
 {
-#ifdef __HAVE_WEBKIT2__
 	webkit_web_view_run_javascript(wv, script, NULL, NULL, NULL);
-#else
-	JSGlobalContextRef global_context;
-	if (use_focused_frame)
-		global_context = webkit_web_frame_get_global_context(webkit_web_view_get_focused_frame(wv));
-	else
-		global_context = webkit_web_frame_get_global_context(webkit_web_view_get_main_frame(wv));
-	JSStringRef script_string = JSStringCreateWithUTF8CString(script);
-	JSStringRef source_string = JSStringCreateWithUTF8CString(script);
-	JSEvaluateScript(global_context, script_string, NULL, source_string, 0, NULL);
-	JSStringRelease(script_string);
-	JSStringRelease(source_string);
-#endif
 }
 
 static void exec_line(struct wkb *w, WebKitWebView *wv, const gchar *line)
@@ -684,12 +624,6 @@ static GObject * get_var_gobject(struct wkb *w, WebKitWebView *wv, struct var *v
 		*name = &v->name[strlen(VAR_PREFIX_WEBKIT_SETTINGS)];
 		return G_OBJECT(webkit_web_view_get_settings(wv));
 	}
-#ifndef __HAVE_WEBKIT2__
-	else if (strncmp(v->name, VAR_PREFIX_SOUP_SESSION, strlen(VAR_PREFIX_SOUP_SESSION)) == 0) {
-		*name = &v->name[strlen(VAR_PREFIX_SOUP_SESSION)];
-		return G_OBJECT(webkit_get_default_session());
-	}
-#endif
 	else return NULL;
 }
 
@@ -744,12 +678,8 @@ static int modmask_compare(guint mod, guint gdk_state)
 
 static void navigate(struct wkb *w, WebKitWebView *v, int n)
 {
-#ifdef __HAVE_WEBKIT2__
 	WebKitBackForwardListItem *item = webkit_back_forward_list_get_nth_item(webkit_web_view_get_back_forward_list(v), n);
 	if (item != NULL) webkit_web_view_go_to_back_forward_list_item(v, item);
-#else
-	webkit_web_view_go_back_or_forward(v, n);
-#endif
 }
 
 static struct alias * new_alias(struct wkb *w, const gchar *name, const gchar *value)
@@ -784,17 +714,11 @@ static struct download * new_download(WebKitDownload *d, const gchar *filename)
 		dl->id = global.next_download_id++;
 		dl->auto_open = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(auto_open));
 		LIST_ADD_TAIL(&global.downloads, (struct node *) dl);
-#ifdef __HAVE_WEBKIT2__
 		dl->status = DOWNLOAD_STATUS_ACTIVE;
 		webkit_download_set_destination(d, file_uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(dialog)));
 		g_signal_connect(d, "failed", G_CALLBACK(cb_download_failed), dl);
 		g_signal_connect(d, "finished", G_CALLBACK(cb_download_finished), dl);
 		g_object_ref(G_OBJECT(d));
-#else
-		dl->status = webkit_download_get_status(d);
-		webkit_download_set_destination_uri(d, file_uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(dialog)));
-		g_signal_connect(d, "notify::status", G_CALLBACK(cb_download_status_changed), dl);
-#endif
 		g_free(file_uri);
 		gtk_widget_destroy(dialog);
 		return dl;
@@ -818,30 +742,12 @@ static GtkWidget * new_tab(struct wkb *w, WebKitWebView *v, const gchar *uri)
 	wv = (v == NULL) ? webkit_web_view_new() : GTK_WIDGET(v);
 	webkit_web_view_set_settings(WEBKIT_WEB_VIEW(wv), global.settings);
 	gtk_widget_show(wv);
-#ifdef __HAVE_WEBKIT2__
 	g_signal_connect(wv, "load-changed", G_CALLBACK(cb_load_changed), w);
 	g_signal_connect(wv, "decide-policy", G_CALLBACK(cb_decide_policy), w);
 	g_signal_connect(wv, "create", G_CALLBACK(cb_create), w);
 	g_signal_connect(wv, "notify::estimated-load-progress", G_CALLBACK(cb_progress_changed), w);
 	g_signal_connect(wv, "mouse-target-changed", G_CALLBACK(cb_mouse_target_changed), w);
 	child = wv;
-#else
-	GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	gtk_container_add(GTK_CONTAINER(sw), wv);
-	gtk_widget_show(sw);
-	g_signal_connect(wv, "notify::load-status", G_CALLBACK(cb_load_changed), w);
-	g_signal_connect(wv, "document-load-finished", G_CALLBACK(cb_document_load_finished), w);
-	g_signal_connect(wv, "mime-type-policy-decision-requested", G_CALLBACK(cb_decide_mime), w);
-	g_signal_connect(wv, "navigation-policy-decision-requested", G_CALLBACK(cb_decide_policy), w);
-	g_signal_connect(wv, "new-window-policy-decision-requested", G_CALLBACK(cb_decide_window), w);
-	g_signal_connect(wv, "download-requested", G_CALLBACK(cb_download), w);
-	g_signal_connect(wv, "create-web-view", G_CALLBACK(cb_create), w);
-	g_signal_connect(wv, "notify::progress", G_CALLBACK(cb_progress_changed), w);
-	g_signal_connect(wv, "hovering-over-link", G_CALLBACK(cb_mouse_target_changed), w);
-	g_signal_connect(G_OBJECT(webkit_web_view_get_inspector(WEBKIT_WEB_VIEW(wv))), "inspect-web-view", G_CALLBACK(cb_inspect_web_view), w);
-	child = sw;
-#endif
 	g_signal_connect(wv, "notify::title", G_CALLBACK(cb_title_changed), w);
 	g_signal_connect(wv, "notify::uri", G_CALLBACK(cb_uri_changed), w);
 	t = g_malloc0(sizeof(struct tab));
@@ -903,11 +809,7 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 	w->dl_l = gtk_label_new("[dl:]");
 	gtk_widget_set_name(w->dl_l, "wkb-download");
 
-#ifdef __HAVE_GTK3__
 	w->bar_hb = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-#else
-	w->bar_hb = gtk_hbox_new(FALSE, 1);
-#endif
 	gtk_box_pack_start(GTK_BOX(w->bar_hb), w->uri_l, TRUE, TRUE, 0);
 	gtk_box_pack_end(GTK_BOX(w->bar_hb), w->id_l, FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(w->bar_hb), w->tabs_l, FALSE, FALSE, 0);
@@ -942,11 +844,7 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(w->consw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_container_add(GTK_CONTAINER(w->consw), w->con);
 
-#ifdef __HAVE_GTK3__
 	w->vb = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-#else
-	w->vb = gtk_vbox_new(FALSE, 0);
-#endif
 	gtk_box_pack_start(GTK_BOX(w->vb), w->nb, TRUE, TRUE, 0);
 	gtk_box_pack_end(GTK_BOX(w->vb), w->bar_nb, FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(w->vb), w->consw, TRUE, TRUE, 0);
@@ -954,20 +852,13 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 
 	w->w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_widget_set_name(w->w, "wkb");
-#ifdef __HAVE_GTK3__
 	gtk_window_set_has_resize_grip(GTK_WINDOW(w->w), FALSE);
-#endif
 	gtk_window_set_geometry_hints(GTK_WINDOW(w->w), NULL, &hints, GDK_HINT_MIN_SIZE|GDK_HINT_BASE_SIZE);
 	gtk_window_set_default_size(GTK_WINDOW(w->w), global.default_width, global.default_height);
 	g_signal_connect_after(w->w, "destroy", G_CALLBACK(cb_destroy), w);
 	g_signal_connect(w->w, "key-press-event", G_CALLBACK(cb_keypress), w);
 	gtk_container_add(GTK_CONTAINER(w->w), w->vb);
 	gtk_widget_show(w->w);
-
-#ifndef __HAVE_GTK3__
-	/* gtk2 style stuff */
-	gtk_notebook_set_tab_border(GTK_NOTEBOOK(w->nb), 0);
-#endif
 
 	new_tab(w, NULL, uri);
 	set_mode(w, MODE_CMD);  /* workaround for GTK3 incorrectly calculating the size of w->i */
@@ -985,11 +876,7 @@ static void open_download(struct wkb *w, WebKitWebView *wv, struct download *dl,
 {
 	int i, k;
 	GString *str = g_string_new(NULL), *escaped_filename;
-#ifdef __HAVE_WEBKIT2__
 	gchar *filename = g_filename_from_uri(webkit_download_get_destination(dl->d), NULL, NULL);
-#else
-	gchar *filename = g_filename_from_uri(webkit_download_get_destination_uri(dl->d), NULL, NULL);
-#endif
 	escaped_filename = escape_string(filename);
 	g_free(filename);
 	i = k = 0;
@@ -1191,7 +1078,6 @@ static void print_download(struct wkb *w, struct download *dl)
 {
 	gchar *status = "Unknown", *filename = NULL;
 	int width = (global.next_download_id < 11) ? 1 : (int) log10(global.next_download_id - 1) + 1;
-#ifdef __HAVE_WEBKIT2__
 	switch (dl->status) {
 		case DOWNLOAD_STATUS_FINISHED: status = "Finished"; break;
 		case DOWNLOAD_STATUS_ACTIVE: status = "Active"; break;
@@ -1206,21 +1092,6 @@ static void print_download(struct wkb *w, struct download *dl)
 		(int) (webkit_download_get_estimated_progress(dl->d) * 100), webkit_download_get_elapsed_time(dl->d),
 		(webkit_download_get_estimated_progress(dl->d) == 0) ? INFINITY : webkit_download_get_elapsed_time(dl->d) / webkit_download_get_estimated_progress(dl->d),
 		(webkit_download_get_elapsed_time(dl->d) == 0) ? 0 : (webkit_download_get_received_data_length(dl->d) / 1024) / webkit_download_get_elapsed_time(dl->d))));
-#else
-	switch (dl->status) {
-		case WEBKIT_DOWNLOAD_STATUS_ERROR: status = "Error"; break;
-		case WEBKIT_DOWNLOAD_STATUS_CREATED: status = "Created"; break;
-		case WEBKIT_DOWNLOAD_STATUS_STARTED: status = "Active"; break;
-		case WEBKIT_DOWNLOAD_STATUS_CANCELLED: status = "Cancelled"; break;
-		case WEBKIT_DOWNLOAD_STATUS_FINISHED: status = "Finished"; break;
-	}
-	filename = g_filename_from_uri(webkit_download_get_destination_uri(dl->d), NULL, NULL);
-	g_free(out(w, TRUE, g_strdup_printf("[%*d] %s\n%*s   %s %ld/%ld (%d%%) %.2lfs/%.2lfs %.2lfKiB/s\n", width, dl->id,
-		filename, width, "", status, (long int) webkit_download_get_current_size(dl->d),
-		(long int) webkit_download_get_total_size(dl->d), (int) (webkit_download_get_progress(dl->d) * 100), webkit_download_get_elapsed_time(dl->d),
-		(webkit_download_get_progress(dl->d) == 0) ? INFINITY : webkit_download_get_elapsed_time(dl->d) / webkit_download_get_progress(dl->d),
-		(webkit_download_get_elapsed_time(dl->d) == 0) ? 0 : (webkit_download_get_current_size(dl->d) / 1024) / webkit_download_get_elapsed_time(dl->d))));
-#endif
 	g_free(filename);
 }
 
@@ -1372,13 +1243,8 @@ static void update_tabs_l(struct wkb *w)
 
 static void update_title(struct wkb *w, WebKitWebView *wv)
 {
-#ifdef __HAVE_WEBKIT2__
 	GtkWidget *child = GTK_WIDGET(wv);
 	gdouble progress = webkit_web_view_get_estimated_load_progress(wv);
-#else
-	GtkWidget *child = gtk_widget_get_parent(GTK_WIDGET(wv)); 
-	gdouble progress = webkit_web_view_get_progress(wv);
-#endif
 	const gchar *title = webkit_web_view_get_title(wv);
 	if (title == NULL) title = webkit_web_view_get_uri(wv);
 	if (title == NULL) title = null_title;
@@ -1431,7 +1297,6 @@ static gboolean cb_cmd_fifo_in(GIOChannel *s, GIOCondition c, struct wkb *w)
 	return TRUE;
 }
 
-#ifdef __HAVE_WEBKIT2__
 static GtkWidget * cb_create(WebKitWebView *wv, struct wkb *w)
 {
 	if (global.allow_popups) return new_tab(w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL);
@@ -1467,43 +1332,6 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 	}
 	return FALSE;
 }
-#else
-static GtkWidget * cb_create(WebKitWebView *wv, WebKitWebFrame *f, struct wkb *w)
-{
-	if (global.allow_popups) return new_tab(w, NULL, NULL);
-	else return NULL;
-}
-
-static gboolean cb_decide_mime(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, gchar *mime, WebKitWebPolicyDecision *d, struct wkb *w)
-{
-	if (webkit_web_view_can_show_mime_type(wv, mime)) webkit_web_policy_decision_use(d);
-	else webkit_web_policy_decision_download(d);
-	return TRUE;
-}
-
-static gboolean cb_decide_policy(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, WebKitWebNavigationAction *na, WebKitWebPolicyDecision *d, struct wkb *w)
-{
-	if (webkit_web_navigation_action_get_button(na) == 2) {
-		if (webkit_web_navigation_action_get_modifier_state(na) & GDK_SHIFT_MASK)
-			new_window(g_malloc0(sizeof(struct wkb)), webkit_network_request_get_uri(r));
-		else
-			new_tab(w, NULL, webkit_network_request_get_uri(r));
-		webkit_web_policy_decision_ignore(d);
-		return TRUE;
-	}
-	return FALSE;
-}
-
-static gboolean cb_decide_window(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, WebKitWebNavigationAction *na, WebKitWebPolicyDecision *d, struct wkb *w)
-{
-	if (webkit_web_navigation_action_get_reason(na) == WEBKIT_WEB_NAVIGATION_REASON_LINK_CLICKED) {
-		new_tab(w, NULL, webkit_network_request_get_uri(r));
-		webkit_web_policy_decision_ignore(d);
-		return TRUE;
-	}
-	return FALSE;
-}
-#endif
 
 static void cb_destroy(WebKitWebView *wv, struct wkb *w)
 {
@@ -1517,7 +1345,6 @@ static void cb_destroy(WebKitWebView *wv, struct wkb *w)
 	if (global.windows.h == NULL) quit();
 }
 
-#ifdef __HAVE_WEBKIT2__
 static void cb_download(WebKitWebContext *c, WebKitDownload *d, void *v)
 {
 	g_signal_connect(d, "decide-destination", G_CALLBACK(cb_download_decide_destination), NULL);
@@ -1544,28 +1371,6 @@ static void cb_download_finished(WebKitDownload *d, struct download *dl)
 	}
 	update_dl_l(NULL);
 }
-#else
-static gboolean cb_download(WebKitWebView *wv, WebKitDownload *d, struct wkb *w)
-{
-	if (new_download(d, webkit_download_get_suggested_filename(d)) == NULL)
-		return FALSE;
-	return TRUE;
-}
-
-static void cb_download_status_changed(WebKitDownload *d, GParamSpec *p, struct download *dl)
-{
-	dl->status = webkit_download_get_status(d);
-	if (dl->status == WEBKIT_DOWNLOAD_STATUS_FINISHED && dl->auto_open)
-		open_download((struct wkb *) global.windows.h, NULL, dl, global.dl_open_cmd);  /* FIXME */
-	update_dl_l(NULL);
-}
-
-static void cb_document_load_finished(WebKitWebView *wv, WebKitWebFrame *f, struct wkb *w)
-{
-	if (global.dom_ready != NULL && f == webkit_web_view_get_main_frame(wv))
-		exec_line(w, wv, global.dom_ready);
-}
-#endif
 
 static void cb_console_size_allocate(WebKitWebView *wv, GdkRectangle *allocation, struct wkb *w)
 {
@@ -1586,23 +1391,6 @@ static void cb_input_end(WebKitWebView *wv, struct wkb *w)
 		new_hist(w, text);
 	g_free(text);
 }
-
-#ifndef __HAVE_WEBKIT2__
-static GtkWidget * cb_inspect_web_view(GtkWidget *i, GtkWidget *wv, struct wkb *w)
-{
-	GtkWidget *window, *sw, *new_wv;
-	new_wv = webkit_web_view_new();
-	webkit_web_view_set_settings(WEBKIT_WEB_VIEW(new_wv), global.settings);
-	sw = gtk_scrolled_window_new(NULL, NULL);
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_container_add(GTK_CONTAINER(sw), new_wv);
-	gtk_window_set_title(GTK_WINDOW(window), "Inspector");
-	gtk_window_set_default_size(GTK_WINDOW(window), global.default_width, global.default_height);
-	gtk_container_add(GTK_CONTAINER(window), sw);
-	gtk_widget_show_all(window);
-	return new_wv;
-}
-#endif
 
 static gboolean cb_keypress(WebKitWebView *wv, GdkEventKey *ev, struct wkb *w)
 {
@@ -1625,7 +1413,6 @@ static gboolean cb_keypress(WebKitWebView *wv, GdkEventKey *ev, struct wkb *w)
 	return TRUE;
 }
 
-#ifdef __HAVE_WEBKIT2__
 static void cb_load_changed(WebKitWebView *wv, WebKitLoadEvent e, struct wkb *w)
 {
 	switch (e) {
@@ -1655,32 +1442,6 @@ static void cb_mouse_target_changed(WebKitWebView *wv, WebKitHitTestResult *ht, 
 	else
 		update_uri_l(w, webkit_web_view_get_uri(wv), webkit_web_view_get_uri(wv));
 }
-#else
-static void cb_load_changed(WebKitWebView *wv, GParamSpec *p, struct wkb *w)
-{
-	switch (webkit_web_view_get_load_status(wv)) {
-		case WEBKIT_LOAD_COMMITTED:
-			if (global.load_started != NULL) exec_line(w, wv, global.load_started);
-			break;
-		case WEBKIT_LOAD_FINISHED:
-			if (global.load_finished != NULL) exec_line(w, wv, global.load_finished);
-			break;
-		default:
-			break;
-	}
-}
-
-static void cb_mouse_target_changed(WebKitWebView *wv, gchar *title, gchar *uri, struct wkb *w)
-{
-	gchar *temp;
-	if (uri != NULL) {
-		update_uri_l(w, temp = g_strconcat("Link: ", uri, NULL), uri);
-		g_free(temp);
-	}
-	else
-		update_uri_l(w, webkit_web_view_get_uri(wv), webkit_web_view_get_uri(wv));
-}
-#endif
 
 static void cb_progress_changed(WebKitWebView *wv, GParamSpec *p, struct wkb *w)
 {
@@ -1757,7 +1518,6 @@ static gboolean bind_run(struct wkb *w, struct bind *b)
 
 /* Begin command functions */
 
-#ifdef __HAVE_WEBKIT2__
 static int cmd_add_ss(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	gchar **whitelist, **blacklist;
@@ -1774,7 +1534,6 @@ static int cmd_add_ss(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	g_strfreev(blacklist);
 	return 0;
 }
-#endif
 
 static int cmd_alias(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
@@ -1881,13 +1640,11 @@ static int cmd_clear(struct wkb *w, WebKitWebView *wv, struct command *c, int ar
 	return 0;
 }
 
-#ifdef __HAVE_WEBKIT2__
 static int cmd_clear_cache(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	webkit_web_context_clear_cache(webkit_web_view_get_context(wv));
 	return 0;
 }
-#endif
 
 static int cmd_dl_cancel(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
@@ -1927,13 +1684,7 @@ static int cmd_dl_new(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	else str = concat_args(argc, argv);
 	uri = construct_uri(str->str);
 	g_string_free(str, TRUE);
-#ifdef __HAVE_WEBKIT2__
 	webkit_web_context_download_uri(webkit_web_view_get_context(wv), uri);
-#else
-	WebKitDownload *d = webkit_download_new(webkit_network_request_new(uri));
-	struct download *dl = new_download(d, webkit_download_get_suggested_filename(d));
-	if (dl != NULL) webkit_download_start(dl->d);
-#endif
 	g_free(uri);
 	return 0;
 }
@@ -1989,17 +1740,8 @@ static int cmd_find(struct wkb *w, WebKitWebView *wv, struct command *c, int arg
 		set_find_string(w, (union wkb_setting) { .s = (strlen(str->str) > 0) ? str->str : NULL });
 		g_string_free(str, TRUE);
 	}
-#ifdef __HAVE_WEBKIT2__
 	WebKitFindController *fc = webkit_web_view_get_find_controller(wv);
 	webkit_find_controller_search(fc, (w->find_string == NULL) ? "": w->find_string, WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE|((argv[0][0] == 'r') ? WEBKIT_FIND_OPTIONS_BACKWARDS : 0)|WEBKIT_FIND_OPTIONS_WRAP_AROUND, G_MAXUINT);
-#else
-	webkit_web_view_unmark_text_matches(wv);
-	if (w->find_string != NULL) {
-		webkit_web_view_mark_text_matches(wv, w->find_string, FALSE, 0);
-		webkit_web_view_set_highlight_text_matches(wv, TRUE);
-		webkit_web_view_search_text(wv, w->find_string, FALSE, (argv[0][0] == 'r') ? FALSE : TRUE, TRUE);
-	}
-#endif
 	return 0;
 }
 
@@ -2144,12 +1886,8 @@ static int cmd_open(struct wkb *w, WebKitWebView *wv, struct command *c, int arg
 
 static int cmd_print(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
-#ifdef __HAVE_WEBKIT2__
 	WebKitPrintOperation *p = webkit_print_operation_new(wv);
 	if (webkit_print_operation_run_dialog(p, GTK_WINDOW(w->w)) == WEBKIT_PRINT_OPERATION_RESPONSE_PRINT) webkit_print_operation_print(p);
-#else
-	webkit_web_frame_print(webkit_web_view_get_main_frame(wv));
-#endif
 	return 0;
 }
 
@@ -2509,18 +2247,6 @@ static gchar * get_handler_gobject(struct wkb *w, WebKitWebView *wv, struct var 
 		g_object_get(obj, name, &sval, NULL);
 		return sval;
 	}
-#ifndef __HAVE_WEBKIT2__
-	else if (t == SOUP_TYPE_URI) {
-		SoupURI *tmp_uri;
-		g_object_get(obj, name, &tmp_uri, NULL);
-		if (tmp_uri != NULL) {
-			gchar *tmp = soup_uri_to_string(tmp_uri, FALSE);
-			soup_uri_free(tmp_uri);
-			return tmp;
-		}
-		return NULL;
-	}
-#endif
 	else
 		g_free(out(w, TRUE, g_strdup_printf("BUG: unhandled type for property \"%s\"\n", name)));
 	return NULL;
@@ -2553,9 +2279,6 @@ static void init_handler_gobject(struct wkb *w, WebKitWebView *wv, struct var_ha
 {
 	add_gobject_properties(w, vh, G_OBJECT(wv), VAR_PREFIX_WEBKIT_WEB_VIEW"%s");
 	add_gobject_properties(w, vh, G_OBJECT(webkit_web_view_get_settings(wv)), VAR_PREFIX_WEBKIT_SETTINGS"%s");
-#ifndef __HAVE_WEBKIT2__
-	add_gobject_properties(w, vh, G_OBJECT(webkit_get_default_session()), VAR_PREFIX_SOUP_SESSION"%s");
-#endif
 }
 
 static void init_handler_wkb(struct wkb *w, WebKitWebView *wv, struct var_handler *vh)
@@ -2606,15 +2329,6 @@ static int set_handler_gobject(struct wkb *w, WebKitWebView *wv, struct var *v, 
 	else if (t == G_TYPE_DOUBLE) g_object_set(obj, name, (new_value == NULL) ? 0.0 : atof(new_value), NULL);
 	else if (t == G_TYPE_FLOAT) g_object_set(obj, name, (new_value == NULL) ? 0.0f : (gfloat) atof(new_value), NULL);
 	else if (t == G_TYPE_STRING) g_object_set(obj, name, new_value, NULL);
-#ifndef __HAVE_WEBKIT2__
-	else if (t == SOUP_TYPE_URI) {
-		gchar *tmp = construct_uri((new_value == NULL) ? "" : new_value);
-		SoupURI *tmp_uri = soup_uri_new(tmp);
-		g_free(tmp);
-		g_object_set(obj, name, tmp_uri, NULL);
-		if (tmp_uri != NULL) soup_uri_free(tmp_uri);
-	}
-#endif
 	else g_free(out(w, TRUE, g_strdup_printf("BUG: unhandled type for property \"%s\"\n", name)));
 	return 0;
 }
@@ -2685,13 +2399,7 @@ static void set_cookie_file(struct wkb *w, union wkb_setting v)
 	gchar *tmp = g_strdup(global.cookie_policy);
 	g_free(global.cookie_file);
 	global.cookie_file = g_strdup(v.s);
-#ifdef __HAVE_WEBKIT2__
 	webkit_cookie_manager_set_persistent_storage(webkit_web_context_get_cookie_manager(webkit_web_view_get_context(GET_CURRENT_VIEW(w))), (v.s == NULL) ? "" : v.s, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
-#else
-	soup_session_remove_feature_by_type(webkit_get_default_session(), soup_cookie_jar_get_type());
-	if (v.s == NULL || v.s[0] == '\0') soup_session_add_feature(webkit_get_default_session(), SOUP_SESSION_FEATURE(soup_cookie_jar_new()));
-	else soup_session_add_feature(webkit_get_default_session(), SOUP_SESSION_FEATURE(soup_cookie_jar_text_new(v.s, FALSE)));
-#endif
 	set_cookie_policy(w, (union wkb_setting) { .s = tmp });
 	g_free(tmp);
 }
@@ -2703,7 +2411,6 @@ static union wkb_setting get_cookie_policy(struct wkb *w, int context)
 
 static void set_cookie_policy(struct wkb *w, union wkb_setting v)
 {
-#ifdef __HAVE_WEBKIT2__
 	WebKitCookieManager *cm = webkit_web_context_get_cookie_manager(webkit_web_view_get_context(GET_CURRENT_VIEW(w)));
 	if (v.s == NULL) return;
 	else if (strcmp(v.s, "always") == 0)
@@ -2712,16 +2419,6 @@ static void set_cookie_policy(struct wkb *w, union wkb_setting v)
 		webkit_cookie_manager_set_accept_policy(cm, WEBKIT_COOKIE_POLICY_ACCEPT_NEVER);
 	else if (strcmp(v.s, "no-third-party") == 0)
 		webkit_cookie_manager_set_accept_policy(cm, WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY);
-#else
-	SoupCookieJar *j = SOUP_COOKIE_JAR(soup_session_get_feature(webkit_get_default_session(), soup_cookie_jar_get_type()));
-	if (v.s == NULL) return;
-	else if (strcmp(v.s, "always") == 0)
-		soup_cookie_jar_set_accept_policy(j, SOUP_COOKIE_JAR_ACCEPT_ALWAYS);
-	else if (strcmp(v.s, "never") == 0)
-		soup_cookie_jar_set_accept_policy(j, SOUP_COOKIE_JAR_ACCEPT_NEVER);
-	else if (strcmp(v.s, "no-third-party") == 0)
-		soup_cookie_jar_set_accept_policy(j, SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY);
-#endif
 	else {
 		g_free(out(w, TRUE, g_strdup_printf("error: illegal value: \"%s\"; legal values: always, never, no-third-party\n", v.s)));
 		return;
@@ -2824,7 +2521,6 @@ static void set_default_height(struct wkb *w, union wkb_setting v)
 	global.default_height = (v.i > 0) ? v.i : 1;
 }
 
-#ifdef __HAVE_WEBKIT2__
 static union wkb_setting get_spell_langs(struct wkb *w, int context)
 {
 	return (union wkb_setting) { .s = global.spell_langs };
@@ -2858,7 +2554,6 @@ static void set_tls_errors(struct wkb *w, union wkb_setting v)
 {
 	webkit_web_context_set_tls_errors_policy(webkit_web_view_get_context(GET_CURRENT_VIEW(w)), (v.b) ? WEBKIT_TLS_ERRORS_POLICY_FAIL : WEBKIT_TLS_ERRORS_POLICY_IGNORE);
 }
-#endif
 
 static union wkb_setting get_find_string(struct wkb *w, int context)
 {
@@ -2987,13 +2682,9 @@ int main(int argc, char *argv[])
 	GString *str;
 	memset(&global, 0, sizeof(global));
 	gtk_init(NULL, NULL);
-#ifdef __HAVE_WEBKIT2__
 	webkit_web_context_set_process_model(webkit_web_context_get_default(), WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 	global.settings = webkit_settings_new();
 	g_signal_connect(webkit_web_context_get_default(), "download-started", G_CALLBACK(cb_download), NULL);
-#else
-	global.settings = webkit_web_settings_new();
-#endif
 	w = new_window(g_malloc0(sizeof(struct wkb)), NULL);
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
 		if (default_wkb_settings[i].scope == WKB_SETTING_SCOPE_GLOBAL && default_wkb_settings[i].set != NULL)

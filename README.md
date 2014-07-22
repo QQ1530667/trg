@@ -6,20 +6,12 @@ Wkb is a modal web browser utilizing WebKitGTK.
 
 #### Dependencies:
 
-* webkitgtk or webkit2gtk
+* webkit2gtk
 * dash (for scripts in the example configuration)
-
-#### Build with gtk2 and webkit1:
-
-	$ ./build.sh
-
-#### Build with gtk3 and webkit1:
-
-	$ WITH_GTK3=y ./build.sh
 
 #### Build with gtk3 and webkit2:
 
-	$ WITH_WEBKIT2=y ./build.sh
+	$ ./build.sh
 
 ### Usage:
 
@@ -83,79 +75,10 @@ Wkb reads `$XDG_CONFIG_HOME/wkb/config` on startup. See `extras/` for an example
 
 ### Theming:
 
-Theming is done via the normal gtk configuration files (`$HOME/.gtkrc-2.0` for gtk2, `$XDG_CONFIG_HOME/gtk-3.0/gtk.css` for gtk3). Fonts are not assigned in the code, so the minimal themes are required for correct console output.
-
-#### Minimal theme for gtk2:
-
-	style "style-wkb-console"
-	{
-		font_name = "Monospace 8"
-	}
-	widget "wkb.GtkVBox.wkb-console-sw.wkb-console" style "style-wkb-console"
+Theming is done via the normal gtk configuration files (`$XDG_CONFIG_HOME/gtk-3.0/gtk.css` for gtk3). Fonts are not assigned in the code, so the minimal themes are required for correct console output.
 
 #### Minimal theme for gtk3:
 
 	#wkb-console {
 		font: Monospace 8;
 	}
-
-#### Dark theme for gtk2:
-
-	style "style-wkb"
-	{
-		fg[NORMAL] = "#ccc"
-		fg[ACTIVE] = "#ccc"
-	
-		bg[NORMAL] = "#222"
-		bg[ACTIVE] = "#222"
-	
-		base[NORMAL] = "#222"
-		base[ACTIVE] = "#222"
-	
-		text[NORMAL] = "#ccc"
-		text[ACTIVE] = "#fff"
-	
-		GtkRange::slider_width = 0
-	
-		xthickness = 0
-		ythickness = 0
-	}
-	
-	style "style-wkb-console"
-	{
-		font_name = "Monospace 8"
-	}
-	
-	style "style-wkb-tab-label"
-	{
-		fg[NORMAL] = "#ccc"
-		fg[ACTIVE] = "#888"
-	}
-	
-	style "style-wkb-input"
-	{
-		base[NORMAL] = "#ccc"
-		text[NORMAL] = "#000"
-		text[ACTIVE] = "#000"
-		GtkEntry::inner_border = { 0, 0, 0, 0 }
-	}
-	
-	style "style-wkb-bar-normal"
-	{
-		fg[NORMAL] = "#ccc"
-	}
-	
-	style "style-wkb-bar-dark"
-	{
-		fg[NORMAL] = "#888"
-	}
-	
-	widget "wkb.*"                                                   style "style-wkb"
-	widget "wkb.GtkVBox.wkb-view.GtkLabel"                           style "style-wkb-tab-label"
-	widget "wkb.GtkVBox.wkb-console-sw.wkb-console"                  style "style-wkb-console"
-	widget "wkb.GtkVBox.GtkNotebook.wkb-input"                       style "style-wkb-input"
-	widget "wkb.GtkVBox.GtkNotebook.wkb-status.GtkHBox.wkb-uri"      style "style-wkb-bar-normal"
-	widget "wkb.GtkVBox.GtkNotebook.wkb-status.GtkHBox.wkb-id"       style "style-wkb-bar-dark"
-	widget "wkb.GtkVBox.GtkNotebook.wkb-status.GtkHBox.wkb-tabs"     style "style-wkb-bar-dark"
-	widget "wkb.GtkVBox.GtkNotebook.wkb-status.GtkHBox.wkb-mode"     style "style-wkb-bar-normal"
-	widget "wkb.GtkVBox.GtkNotebook.wkb-status.GtkHBox.wkb-download" style "style-wkb-bar-normal"
