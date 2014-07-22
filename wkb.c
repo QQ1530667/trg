@@ -81,7 +81,7 @@ struct wkb {
 	GIOChannel *cmd_fifo_ioch;
 	guint cmd_fifo_ioch_sid;
 	/* settings; WKB_SETTING_SCOPE_WINDOW */
-	gboolean auto_scroll, show_console, print_keyval;
+	gboolean auto_scroll, show_console, print_keyval, fullscreen;
 	gchar *cmd_fifo, *current_uri, *find_string;
 };
 
@@ -180,6 +180,7 @@ static void destroy_var(struct wkb *, struct var *);
 static GString * escape_string(const gchar *);
 static void eval_js(WebKitWebView *, const gchar *, const gchar *, int);
 static void exec_line(struct wkb *, WebKitWebView *, const gchar *);
+static void fullscreen_mode(struct wkb *, gboolean);
 static struct alias * get_alias(struct wkb *, const gchar *);
 static struct bind * get_bind(struct wkb *, guint, guint, const gchar *);
 static struct download * get_download(int);
@@ -220,6 +221,7 @@ static void update_uri_l(struct wkb *, const gchar *, const gchar *);
 
 /* Callback functions */
 static gboolean cb_cmd_fifo_in(GIOChannel *, GIOCondition, struct wkb *);
+static void cb_console_size_allocate(WebKitWebView *, GdkRectangle *, struct wkb *);
 static GtkWidget * cb_create(WebKitWebView *, struct wkb *);
 static gboolean cb_decide_policy(WebKitWebView *, WebKitPolicyDecision *, WebKitPolicyDecisionType, struct wkb *);
 static void cb_destroy(WebKitWebView *, struct wkb *);
@@ -227,9 +229,10 @@ static void cb_download(WebKitWebContext *, WebKitDownload *, void *);
 static gboolean cb_download_decide_destination(WebKitDownload *, gchar *, void *);
 static void cb_download_failed(WebKitDownload *, GError *, struct download *);
 static void cb_download_finished(WebKitDownload *, struct download *);
-static void cb_console_size_allocate(WebKitWebView *, GdkRectangle *, struct wkb *);
+static gboolean cb_enter_fullscreen(WebKitWebView *, struct wkb *);
 static void cb_input_end(WebKitWebView *, struct wkb *);
 static gboolean cb_keypress(WebKitWebView *, GdkEventKey *, struct wkb *);
+static gboolean cb_leave_fullscreen(WebKitWebView *, struct wkb *);
 static void cb_load_changed(WebKitWebView *, WebKitLoadEvent, struct wkb *);
 static void cb_mouse_target_changed(WebKitWebView *, WebKitHitTestResult *, guint, struct wkb *);
 static void cb_progress_changed(WebKitWebView *, GParamSpec *, struct wkb *);
@@ -307,6 +310,8 @@ static union wkb_setting get_show_console(struct wkb *, int);
 static void set_show_console(struct wkb *, union wkb_setting);
 static union wkb_setting get_print_keyval(struct wkb *, int);
 static void set_print_keyval(struct wkb *, union wkb_setting);
+static union wkb_setting get_fullscreen(struct wkb *, int);
+static void set_fullscreen(struct wkb *, union wkb_setting);
 static union wkb_setting get_allow_popups(struct wkb *, int);
 static void set_allow_popups(struct wkb *, union wkb_setting);
 static union wkb_setting get_download_dir(struct wkb *, int);
@@ -554,6 +559,19 @@ static void exec_line(struct wkb *w, WebKitWebView *wv, const gchar *line)
 	destroy_token_list(&tok);
 }
 
+static void fullscreen_mode(struct wkb *w, gboolean f)
+{
+	if (f) {
+		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(w->nb), FALSE);
+		if (w->mode != MODE_CMD) gtk_widget_hide(w->bar_nb);
+	}
+	else {
+		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(w->nb), TRUE);
+		gtk_widget_show(w->bar_nb);
+	}
+	w->fullscreen = f;
+}
+
 static struct alias * get_alias(struct wkb *w, const gchar *name)
 {
 	struct alias *a;
@@ -747,9 +765,11 @@ static GtkWidget * new_tab(struct wkb *w, WebKitWebView *v, const gchar *uri)
 	g_signal_connect(wv, "create", G_CALLBACK(cb_create), w);
 	g_signal_connect(wv, "notify::estimated-load-progress", G_CALLBACK(cb_progress_changed), w);
 	g_signal_connect(wv, "mouse-target-changed", G_CALLBACK(cb_mouse_target_changed), w);
-	child = wv;
 	g_signal_connect(wv, "notify::title", G_CALLBACK(cb_title_changed), w);
 	g_signal_connect(wv, "notify::uri", G_CALLBACK(cb_uri_changed), w);
+	g_signal_connect(wv, "enter-fullscreen", G_CALLBACK(cb_enter_fullscreen), w);
+	g_signal_connect(wv, "leave-fullscreen", G_CALLBACK(cb_leave_fullscreen), w);
+	child = wv;
 	t = g_malloc0(sizeof(struct tab));
 	t->c = child;
 	LIST_ADD_HEAD(&w->tabs, (struct node *) t);
@@ -1106,6 +1126,7 @@ static void set_mode(struct wkb *w, guint m)
 {
 	switch(m) {
 		case MODE_NORMAL: case MODE_INSERT: case MODE_PASSTHROUGH:
+			if (w->fullscreen) gtk_widget_hide(w->bar_nb);
 			if (m == MODE_NORMAL) gtk_widget_hide(w->mode_l);
 			else if (m == MODE_INSERT) {
 				gtk_widget_show(w->mode_l);
@@ -1122,6 +1143,7 @@ static void set_mode(struct wkb *w, guint m)
 			w->current_hist = NULL;
 			break;
 		case MODE_CMD:
+			if (w->fullscreen) gtk_widget_show(w->bar_nb);
 			gtk_notebook_set_current_page(GTK_NOTEBOOK(w->bar_nb), BAR_INPUT_PAGE);
 			gtk_widget_set_can_focus(w->i, TRUE);
 			gtk_widget_grab_focus(w->i);
@@ -1297,6 +1319,15 @@ static gboolean cb_cmd_fifo_in(GIOChannel *s, GIOCondition c, struct wkb *w)
 	return TRUE;
 }
 
+static void cb_console_size_allocate(WebKitWebView *wv, GdkRectangle *allocation, struct wkb *w)
+{
+	GtkAdjustment *va;
+	if (w->auto_scroll) {
+		va = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(w->consw));
+		gtk_adjustment_set_value(va, gtk_adjustment_get_upper(va) - gtk_adjustment_get_page_size(va));
+	}
+}
+
 static GtkWidget * cb_create(WebKitWebView *wv, struct wkb *w)
 {
 	if (global.allow_popups) return new_tab(w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL);
@@ -1372,13 +1403,10 @@ static void cb_download_finished(WebKitDownload *d, struct download *dl)
 	update_dl_l(NULL);
 }
 
-static void cb_console_size_allocate(WebKitWebView *wv, GdkRectangle *allocation, struct wkb *w)
+static gboolean cb_enter_fullscreen(WebKitWebView *wv, struct wkb *w)
 {
-	GtkAdjustment *va;
-	if (w->auto_scroll) {
-		va = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(w->consw));
-		gtk_adjustment_set_value(va, gtk_adjustment_get_upper(va) - gtk_adjustment_get_page_size(va));
-	}
+	fullscreen_mode(w, TRUE);
+	return FALSE;
 }
 
 static void cb_input_end(WebKitWebView *wv, struct wkb *w)
@@ -1411,6 +1439,12 @@ static gboolean cb_keypress(WebKitWebView *wv, GdkEventKey *ev, struct wkb *w)
 	if (w->mode == MODE_CMD || w->mode == MODE_INSERT || w->mode == MODE_PASSTHROUGH)
 		return FALSE;
 	return TRUE;
+}
+
+static gboolean cb_leave_fullscreen(WebKitWebView *wv, struct wkb *w)
+{
+	fullscreen_mode(w, FALSE);
+	return FALSE;
 }
 
 static void cb_load_changed(WebKitWebView *wv, WebKitLoadEvent e, struct wkb *w)
@@ -2457,6 +2491,20 @@ static union wkb_setting get_print_keyval(struct wkb *w, int context)
 static void set_print_keyval(struct wkb *w, union wkb_setting v)
 {
 	w->print_keyval = v.b;
+}
+
+static union wkb_setting get_fullscreen(struct wkb *w, int context)
+{
+	return (union wkb_setting) { .b = w->fullscreen };
+}
+
+static void set_fullscreen(struct wkb *w, union wkb_setting v)
+{
+	/* apparently calling gtk_window_unfullscreen() when the window isn't fullscreened causes some problems... */
+	if (v.b == w->fullscreen) return;
+	fullscreen_mode(w, v.b);
+	if (v.b) gtk_window_fullscreen(GTK_WINDOW(w->w));
+	else gtk_window_unfullscreen(GTK_WINDOW(w->w));
 }
 
 static union wkb_setting get_allow_popups(struct wkb *w, int context)
