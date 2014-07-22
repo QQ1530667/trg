@@ -2733,6 +2733,8 @@ int main(int argc, char *argv[])
 	webkit_web_context_set_process_model(webkit_web_context_get_default(), WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 	global.settings = webkit_settings_new();
 	g_signal_connect(webkit_web_context_get_default(), "download-started", G_CALLBACK(cb_download), NULL);
+	global.default_width = default_width;
+	global.default_height = default_height;
 	w = new_window(g_malloc0(sizeof(struct wkb)), NULL);
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
 		if (default_wkb_settings[i].scope == WKB_SETTING_SCOPE_GLOBAL && default_wkb_settings[i].set != NULL)
@@ -2742,7 +2744,8 @@ int main(int argc, char *argv[])
 	str = concat_args(argc, argv);
 	exec_line(w, NULL, str->str);
 	g_string_free(str, TRUE);
-	LIST_FOREACH(&global.windows, w) gtk_window_resize(GTK_WINDOW(w->w), global.default_width, global.default_height);
+	if ((global.default_width != default_width || global.default_height != default_height) && !w->fullscreen)
+		gtk_window_resize(GTK_WINDOW(w->w), global.default_width, global.default_height);
 	signal(SIGTERM, signal_handler);
 	signal(SIGINT, signal_handler);
 	signal(SIGQUIT, signal_handler);

@@ -1,5 +1,7 @@
 #define WKB_WEBKIT_API "2"
 static const gchar null_title[]      = "Untitled";
+static const int default_width       = 800;
+static const int default_height      = 600;
 
 #define VAR_PREFIX_WEBKIT_WEB_VIEW "v."
 #define VAR_PREFIX_WEBKIT_SETTINGS "s."
@@ -196,8 +198,8 @@ static struct default_wkb_setting default_wkb_settings[] = {
 	{ VAR_DOWNLOAD_DIR,    WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_download_dir,    set_download_dir,    { .s = NULL } },
 	{ VAR_DL_OPEN_CMD,     WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_dl_open_cmd,     set_dl_open_cmd,     { .s = NULL } },
 	{ VAR_DL_AUTO_OPEN,    WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_BOOL,    get_dl_auto_open,    set_dl_auto_open,    { .b = FALSE } },
-	{ VAR_DEFAULT_WIDTH,   WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_INT,     get_default_width,   set_default_width,   { .i = 800 } },
-	{ VAR_DEFAULT_HEIGHT,  WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_INT,     get_default_height,  set_default_height,  { .i = 600 } },
+	{ VAR_DEFAULT_WIDTH,   WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_INT,     get_default_width,   set_default_width,   { .i = default_width } },
+	{ VAR_DEFAULT_HEIGHT,  WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_INT,     get_default_height,  set_default_height,  { .i = default_height } },
 	{ VAR_SPELL_LANGS,     WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_spell_langs,     set_spell_langs,     { .s = NULL } },
 	{ VAR_SPELL,           WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_BOOL,    get_spell,           set_spell,           { .b = FALSE } },
 	{ VAR_TLS_ERRORS,      WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_BOOL,    get_tls_errors,      set_tls_errors,      { .b = TRUE } },
