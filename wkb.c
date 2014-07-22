@@ -59,6 +59,7 @@ static struct {
 	struct list hist;
 	struct list downloads;
 	int next_download_id, next_window_id;
+	gboolean show_window;  /* Show new windows when created. If false, the new window must be shown manually. */
 	/* settings; WKB_SETTING_SCOPE_GLOBAL */
 	int default_width, default_height;
 	gboolean allow_popups, dl_auto_open;
@@ -878,7 +879,7 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 	g_signal_connect_after(w->w, "destroy", G_CALLBACK(cb_destroy), w);
 	g_signal_connect(w->w, "key-press-event", G_CALLBACK(cb_keypress), w);
 	gtk_container_add(GTK_CONTAINER(w->w), w->vb);
-	gtk_widget_show(w->w);
+	if (global.show_window) gtk_widget_show(w->w);
 
 	new_tab(w, NULL, uri);
 	set_mode(w, MODE_CMD);  /* workaround for GTK3 incorrectly calculating the size of w->i */
@@ -2733,8 +2734,8 @@ int main(int argc, char *argv[])
 	webkit_web_context_set_process_model(webkit_web_context_get_default(), WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 	global.settings = webkit_settings_new();
 	g_signal_connect(webkit_web_context_get_default(), "download-started", G_CALLBACK(cb_download), NULL);
-	global.default_width = default_width;
-	global.default_height = default_height;
+	global.default_width = DEFAULT_WIDTH;
+	global.default_height = DEFAULT_HEIGHT;
 	w = new_window(g_malloc0(sizeof(struct wkb)), NULL);
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
 		if (default_wkb_settings[i].scope == WKB_SETTING_SCOPE_GLOBAL && default_wkb_settings[i].set != NULL)
@@ -2744,8 +2745,11 @@ int main(int argc, char *argv[])
 	str = concat_args(argc, argv);
 	exec_line(w, NULL, str->str);
 	g_string_free(str, TRUE);
-	if ((global.default_width != default_width || global.default_height != default_height) && !w->fullscreen)
-		gtk_window_resize(GTK_WINDOW(w->w), global.default_width, global.default_height);
+	if (global.default_width != DEFAULT_WIDTH || global.default_height != DEFAULT_HEIGHT)
+		LIST_FOREACH(&global.windows, w)
+			gtk_window_set_default_size(GTK_WINDOW(w->w), global.default_width, global.default_height);
+	global.show_window = TRUE;
+	LIST_FOREACH(&global.windows, w) gtk_widget_show(w->w);
 	signal(SIGTERM, signal_handler);
 	signal(SIGINT, signal_handler);
 	signal(SIGQUIT, signal_handler);
