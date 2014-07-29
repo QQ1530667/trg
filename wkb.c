@@ -116,6 +116,7 @@ struct hist {
 struct tab {
 	struct node n;
 	GtkWidget *c;
+	struct wkb *w;
 };
 
 struct download {
@@ -174,7 +175,7 @@ static void destroy_alias(struct wkb *, struct alias *);
 static void destroy_bind(struct wkb *, struct bind *);
 static void destroy_cmd_fifo(struct wkb *);
 static void destroy_download(struct download *);
-static void destroy_tab(struct wkb *, struct tab *);
+static void destroy_tab(struct tab *);
 static struct token * destroy_token(struct list *, struct token *);
 static void destroy_token_list(struct list *);
 static void destroy_var(struct wkb *, struct var *);
@@ -217,10 +218,11 @@ static void tokenize(const gchar *, struct list *);
 static void tokenize_expansion(const gchar *, struct list *);
 static void update_dl_l(struct wkb *);
 static void update_tabs_l(struct wkb *);
-static void update_title(struct wkb *, WebKitWebView *);
+static void update_title(struct tab *);
 static void update_uri_l(struct wkb *, const gchar *, const gchar *);
 
 /* Callback functions */
+static void cb_close(WebKitWebView *, struct tab *);
 static gboolean cb_cmd_fifo_in(GIOChannel *, GIOCondition, struct wkb *);
 static void cb_console_size_allocate(WebKitWebView *, GdkRectangle *, struct wkb *);
 static GtkWidget * cb_create(WebKitWebView *, struct wkb *);
@@ -236,10 +238,10 @@ static gboolean cb_keypress(WebKitWebView *, GdkEventKey *, struct wkb *);
 static gboolean cb_leave_fullscreen(WebKitWebView *, struct wkb *);
 static void cb_load_changed(WebKitWebView *, WebKitLoadEvent, struct wkb *);
 static void cb_mouse_target_changed(WebKitWebView *, WebKitHitTestResult *, guint, struct wkb *);
-static void cb_progress_changed(WebKitWebView *, GParamSpec *, struct wkb *);
+static void cb_progress_changed(WebKitWebView *, GParamSpec *, struct tab *);
 static void cb_tab_changed(WebKitWebView *, GtkWidget *, guint, struct wkb *);
-static void cb_title_changed(WebKitWebView *, GParamSpec *, struct wkb *);
-static void cb_uri_changed(WebKitWebView *, GParamSpec *, struct wkb *);
+static void cb_title_changed(WebKitWebView *, GParamSpec *, struct tab *);
+static void cb_uri_changed(WebKitWebView *, GParamSpec *, struct tab *);
 
 /* Bind functions */
 static gboolean bind_hist_next(struct wkb *, struct bind *);
@@ -458,15 +460,16 @@ static void destroy_download(struct download *dl)
 	g_free(dl);
 }
 
-static void destroy_tab(struct wkb *w, struct tab *t)
+static void destroy_tab(struct tab *t)
 {
+	struct wkb *w = t->w;
 	webkit_web_view_stop_loading(GET_VIEW_FROM_CHILD(t->c));  /* This is required. Otherwise cb_progress_changed gets called after this function runs... */
 	if (w->tabs.h == (struct node *) t && w->tabs.h->n != NULL)
 		gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), ((struct tab *) w->tabs.h->n)->c));
 	LIST_REMOVE(&w->tabs, (struct node *) t);
 	gtk_notebook_remove_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), t->c));
 	g_free(t);
-	LIST_FOREACH(&w->tabs, t) update_title(w, GET_VIEW_FROM_CHILD(t->c));
+	LIST_FOREACH(&w->tabs, t) update_title(t);
 }
 
 static struct token * destroy_token(struct list *tok, struct token *t)
@@ -756,31 +759,31 @@ static struct hist * new_hist(struct wkb *w, const gchar *line)
 
 static GtkWidget * new_tab(struct wkb *w, WebKitWebView *v, const gchar *uri)
 {
-	GtkWidget *wv, *child;
-	struct tab *t;
+	GtkWidget *wv;
+	struct tab *t = g_malloc0(sizeof(struct tab));
 	wv = (v == NULL) ? webkit_web_view_new() : GTK_WIDGET(v);
 	webkit_web_view_set_settings(WEBKIT_WEB_VIEW(wv), global.settings);
 	gtk_widget_show(wv);
 	g_signal_connect(wv, "load-changed", G_CALLBACK(cb_load_changed), w);
 	g_signal_connect(wv, "decide-policy", G_CALLBACK(cb_decide_policy), w);
 	g_signal_connect(wv, "create", G_CALLBACK(cb_create), w);
-	g_signal_connect(wv, "notify::estimated-load-progress", G_CALLBACK(cb_progress_changed), w);
+	g_signal_connect(wv, "notify::estimated-load-progress", G_CALLBACK(cb_progress_changed), t);
 	g_signal_connect(wv, "mouse-target-changed", G_CALLBACK(cb_mouse_target_changed), w);
-	g_signal_connect(wv, "notify::title", G_CALLBACK(cb_title_changed), w);
-	g_signal_connect(wv, "notify::uri", G_CALLBACK(cb_uri_changed), w);
+	g_signal_connect(wv, "notify::title", G_CALLBACK(cb_title_changed), t);
+	g_signal_connect(wv, "notify::uri", G_CALLBACK(cb_uri_changed), t);
 	g_signal_connect(wv, "enter-fullscreen", G_CALLBACK(cb_enter_fullscreen), w);
 	g_signal_connect(wv, "leave-fullscreen", G_CALLBACK(cb_leave_fullscreen), w);
-	child = wv;
-	t = g_malloc0(sizeof(struct tab));
-	t->c = child;
+	g_signal_connect(wv, "close", G_CALLBACK(cb_close), t);
+	t->c = wv;
+	t->w = w;
 	LIST_ADD_HEAD(&w->tabs, (struct node *) t);
-	gtk_notebook_insert_page(GTK_NOTEBOOK(w->nb), child, gtk_label_new(NULL), gtk_notebook_get_current_page(GTK_NOTEBOOK(w->nb)) + 1);
-	gtk_container_child_set(GTK_CONTAINER(w->nb), child, "tab-expand", TRUE, NULL);
-	gtk_misc_set_alignment(GTK_MISC(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), child)), 0.0, 0.5);
-	gtk_label_set_ellipsize(GTK_LABEL(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), child)), PANGO_ELLIPSIZE_END);
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), child));
+	gtk_notebook_insert_page(GTK_NOTEBOOK(w->nb), wv, gtk_label_new(NULL), gtk_notebook_get_current_page(GTK_NOTEBOOK(w->nb)) + 1);
+	gtk_container_child_set(GTK_CONTAINER(w->nb), wv, "tab-expand", TRUE, NULL);
+	gtk_misc_set_alignment(GTK_MISC(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), wv)), 0.0, 0.5);
+	gtk_label_set_ellipsize(GTK_LABEL(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), wv)), PANGO_ELLIPSIZE_END);
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), wv));
 	open_uri(WEBKIT_WEB_VIEW(wv), uri);
-	LIST_FOREACH(&w->tabs, t) update_title(w, GET_VIEW_FROM_CHILD(t->c));
+	LIST_FOREACH(&w->tabs, t) update_title(t);
 	if (global.create != NULL) exec_line(w, WEBKIT_WEB_VIEW(wv), global.create);
 	return wv;
 }
@@ -1264,20 +1267,20 @@ static void update_tabs_l(struct wkb *w)
 	g_free(str);
 }
 
-static void update_title(struct wkb *w, WebKitWebView *wv)
+static void update_title(struct tab *t)
 {
-	GtkWidget *child = GTK_WIDGET(wv);
+	WebKitWebView *wv = GET_VIEW_FROM_CHILD(t->c);
 	gdouble progress = webkit_web_view_get_estimated_load_progress(wv);
 	const gchar *title = webkit_web_view_get_title(wv);
 	if (title == NULL) title = webkit_web_view_get_uri(wv);
 	if (title == NULL) title = null_title;
 	gchar *tab_title;
 	if (progress == 0.0 || progress == 1.0)
-		tab_title = g_strdup_printf("%d  %s", gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), child) + 1, title);
+		tab_title = g_strdup_printf("%d  %s", gtk_notebook_page_num(GTK_NOTEBOOK(t->w->nb), t->c) + 1, title);
 	else
-		tab_title = g_strdup_printf("%d  [%d%%] %s", gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), child) + 1, (int) (progress * 100), title);
-	gtk_label_set_text(GTK_LABEL(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), child)), tab_title);
-	if (wv == GET_CURRENT_VIEW(w)) gtk_window_set_title(GTK_WINDOW(w->w), title);
+		tab_title = g_strdup_printf("%d  [%d%%] %s", gtk_notebook_page_num(GTK_NOTEBOOK(t->w->nb), t->c) + 1, (int) (progress * 100), title);
+	gtk_label_set_text(GTK_LABEL(gtk_notebook_get_tab_label(GTK_NOTEBOOK(t->w->nb), t->c)), tab_title);
+	if (wv == GET_CURRENT_VIEW(t->w)) gtk_window_set_title(GTK_WINDOW(t->w->w), title);
 	g_free(tab_title);
 }
 
@@ -1288,6 +1291,13 @@ static void update_uri_l(struct wkb *w, const gchar *l, const gchar *s)
 }
 
 /* Begin callback functions */
+
+static void cb_close(WebKitWebView *wv, struct tab *t)
+{
+	struct wkb *w = t->w;
+	destroy_tab(t);
+	if (w->tabs.h == NULL) new_tab(w, NULL, global.homepage);
+}
 
 static gboolean cb_cmd_fifo_in(GIOChannel *s, GIOCondition c, struct wkb *w)
 {
@@ -1369,7 +1379,7 @@ static void cb_destroy(WebKitWebView *wv, struct wkb *w)
 {
 	destroy_cmd_fifo(w);
 	LIST_REMOVE(&global.windows, (struct node *) w);
-	while (w->tabs.h != NULL) destroy_tab(w, (struct tab *) w->tabs.h);
+	while (w->tabs.h != NULL) destroy_tab((struct tab *) w->tabs.h);
 	g_free(w->tmp_line);
 	g_free(w->current_uri);
 	g_free(w->find_string);
@@ -1478,9 +1488,9 @@ static void cb_mouse_target_changed(WebKitWebView *wv, WebKitHitTestResult *ht, 
 		update_uri_l(w, webkit_web_view_get_uri(wv), webkit_web_view_get_uri(wv));
 }
 
-static void cb_progress_changed(WebKitWebView *wv, GParamSpec *p, struct wkb *w)
+static void cb_progress_changed(WebKitWebView *wv, GParamSpec *p, struct tab *t)
 {
-	update_title(w, wv);
+	update_title(t);
 }
 
 static void cb_tab_changed(WebKitWebView *wv, GtkWidget *page, guint page_num, struct wkb *w)
@@ -1491,21 +1501,21 @@ static void cb_tab_changed(WebKitWebView *wv, GtkWidget *page, guint page_num, s
 			LIST_REMOVE(&w->tabs, (struct node *) t);
 			LIST_ADD_HEAD(&w->tabs, (struct node *) t);
 			update_uri_l(w, webkit_web_view_get_uri(GET_VIEW_FROM_CHILD(page)), webkit_web_view_get_uri(GET_VIEW_FROM_CHILD(page)));
-			update_title(w, GET_VIEW_FROM_CHILD(page));
+			update_title(t);
 			update_tabs_l(w);
 		}
 	}
 }
 
-static void cb_title_changed(WebKitWebView *wv, GParamSpec *p, struct wkb *w)
+static void cb_title_changed(WebKitWebView *wv, GParamSpec *p, struct tab *t)
 {
-	update_title(w, wv);
+	update_title(t);
 }
 
-static void cb_uri_changed(WebKitWebView *wv, GParamSpec *p, struct wkb *w)
+static void cb_uri_changed(WebKitWebView *wv, GParamSpec *p, struct tab *t)
 {
-	if (wv == GET_CURRENT_VIEW(w)) update_uri_l(w, webkit_web_view_get_uri(wv), webkit_web_view_get_uri(wv));
-	update_title(w, wv);
+	if (t == GET_CURRENT_TAB(t->w)) update_uri_l(t->w, webkit_web_view_get_uri(wv), webkit_web_view_get_uri(wv));
+	update_title(t);
 }
 
 /* Begin bind functions */
@@ -1962,7 +1972,7 @@ static int cmd_reorder(struct wkb *w, WebKitWebView *wv, struct command *c, int 
 		}
 	}
 	gtk_notebook_reorder_child(GTK_NOTEBOOK(w->nb), ((struct tab *) w->tabs.h)->c, p);
-	LIST_FOREACH(&w->tabs, t) update_title(w, GET_VIEW_FROM_CHILD(t->c));
+	LIST_FOREACH(&w->tabs, t) update_title(t);
 	return 0;
 }
 
@@ -2116,8 +2126,8 @@ static int cmd_switch(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 
 static int cmd_tclose(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
-	destroy_tab(w, (struct tab *) w->tabs.h);
-	if (w->tabs.h == NULL) cmd_topen(w, wv, NULL, 0, NULL);
+	destroy_tab((struct tab *) w->tabs.h);
+	if (w->tabs.h == NULL) new_tab(w, NULL, global.homepage);
 	update_tabs_l(w);
 	return 0;
 }
