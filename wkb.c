@@ -255,6 +255,7 @@ static int cmd_alias(struct wkb *, WebKitWebView *, struct command *, int, gchar
 static int cmd_bind(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_clear(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_clear_cache(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_clear_ss(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_dl_cancel(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_dl_clear(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_dl_new(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
@@ -1688,6 +1689,12 @@ static int cmd_clear(struct wkb *w, WebKitWebView *wv, struct command *c, int ar
 static int cmd_clear_cache(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	webkit_web_context_clear_cache(webkit_web_view_get_context(wv));
+	return 0;
+}
+
+static int cmd_clear_ss(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+{
+	webkit_web_view_group_remove_all_user_style_sheets(webkit_web_view_get_group(wv));
 	return 0;
 }
 

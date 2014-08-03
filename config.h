@@ -36,8 +36,8 @@ static const gchar null_title[]      = "Untitled";
 #define VAR_LOAD_FINISHED  "hook.load-finished"
 #define VAR_CREATE         "hook.create"
 
-static gchar cmd_add_ss_desc[]        = "add-stylesheet: add a stylesheet\n";
-static gchar cmd_add_ss_usage[]       = "add-stylesheet: usage: add-stylesheet <source> <base-uri> <whitelist> <blacklist>\n";
+static gchar cmd_add_ss_desc[]        = "add-ss: add a user stylesheet\n";
+static gchar cmd_add_ss_usage[]       = "add-ss: usage: add-stylesheet <source> <base-uri> <whitelist> <blacklist>\n";
 static gchar cmd_alias_desc[]         = "alias: define an alias, print the alias definition if no value is given, or list aliases if no arguments are given\n";
 static gchar cmd_alias_usage[]        = "alias: usage: alias [<name> [value]]\n";
 static gchar cmd_bind_desc[]          = "bind: bind a key to a handler, print matching binds if no handler is given, or list bindings if no arguments are given\n";
@@ -46,6 +46,8 @@ static gchar cmd_clear_desc[]         = "clear: clear the console\n";
 static gchar cmd_clear_usage[]        = "clear: usage: clear\n";
 static gchar cmd_clear_cache_desc[]   = "clear-cache: clear all cached resources\n";
 static gchar cmd_clear_cache_usage[]  = "clear-cache: usage: clear\n";
+static gchar cmd_clear_ss_desc[]      = "clear-ss: remove all user stylesheets\n";
+static gchar cmd_clear_ss_usage[]     = "clear-ss: usage: clear-stylesheets\n";
 static gchar cmd_dl_cancel_desc[]     = "dl-cancel: cancel the specified downloads, or all downloads if no arguments are given\n";
 static gchar cmd_dl_cancel_usage[]    = "dl-cancel: usage: dl-cancel [id ...]\n";
 static gchar cmd_dl_clear_desc[]      = "dl-clear: cancel and remove the specified downloads, or all downloads if no arguments are given\n";
@@ -126,11 +128,12 @@ static gchar cmd_zoom_desc[]          = "zoom: set the zoom level for the curren
 static gchar cmd_zoom_usage[]         = "zoom: usage: zoom [+|-]<number:1.0=100%>\n";
 
 static struct command commands[] = {
-	{ "add-stylesheet",  cmd_add_ss_desc,       cmd_add_ss_usage,       cmd_add_ss },
+	{ "add-ss",          cmd_add_ss_desc,       cmd_add_ss_usage,       cmd_add_ss },
 	{ "alias",           cmd_alias_desc,        cmd_alias_usage,        cmd_alias },
 	{ "bind",            cmd_bind_desc,         cmd_bind_usage,         cmd_bind },
 	{ "clear",           cmd_clear_desc,        cmd_clear_usage,        cmd_clear },
 	{ "clear-cache",     cmd_clear_cache_desc,  cmd_clear_cache_usage,  cmd_clear_cache },
+	{ "clear-ss",        cmd_clear_ss_desc,     cmd_clear_ss_usage,     cmd_clear_ss },
 	{ "dl-clear",        cmd_dl_clear_desc,     cmd_dl_clear_usage,     cmd_dl_clear },
 	{ "dl-cancel",       cmd_dl_cancel_desc,    cmd_dl_cancel_usage,    cmd_dl_cancel },
 	{ "dl-new",          cmd_dl_new_desc,       cmd_dl_new_usage,       cmd_dl_new },
@@ -298,6 +301,6 @@ static const gchar *builtin_config[] = {
 	"nset "VAR_DOWNLOAD_DIR" \"{HOME}\"",
 	"nset "VAR_DL_OPEN_CMD" \"spawn xdg-open \\\"%f\\\"\"",
 	"nset "VAR_COOKIE_FILE" \"{"VAR_CONFIG_DIR"}/cookies.txt\"",
-	"add-stylesheet \"@import url('file://{"VAR_CONFIG_DIR"}/stylesheet.css');\" \"\" \"\" \"\"",
+	"add-ss \"@import url('file://{"VAR_CONFIG_DIR"}/stylesheet.css');\" \"\" \"\" \"\"",
 	"loadconfig config",
 };
