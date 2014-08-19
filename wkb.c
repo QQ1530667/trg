@@ -68,6 +68,9 @@ static struct {
 		*load_started, *load_finished, *dom_ready, *create;
 	gchar *spell_langs;
 	WebKitSettings *settings;
+#if WEBKIT_CHECK_VERSION(2, 5, 1)
+	WebKitUserContentManager *cm;
+#endif
 } global;
 
 struct wkb {
@@ -762,7 +765,11 @@ static GtkWidget * new_tab(struct wkb *w, WebKitWebView *v, const gchar *uri)
 {
 	GtkWidget *wv;
 	struct tab *t = g_malloc0(sizeof(struct tab));
+#if WEBKIT_CHECK_VERSION(2, 5, 1)
+	wv = (v == NULL) ? webkit_web_view_new_with_user_content_manager(global.cm) : GTK_WIDGET(v);
+#else
 	wv = (v == NULL) ? webkit_web_view_new() : GTK_WIDGET(v);
+#endif
 	webkit_web_view_set_settings(WEBKIT_WEB_VIEW(wv), global.settings);
 	gtk_widget_show(wv);
 	g_signal_connect(wv, "load-changed", G_CALLBACK(cb_load_changed), w);
@@ -1573,9 +1580,15 @@ static int cmd_add_ss(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	}
 	whitelist = (strlen(argv[3]) > 0) ? g_strsplit(argv[3], ",", -1) : NULL;
 	blacklist = (strlen(argv[4]) > 0) ? g_strsplit(argv[4], ",", -1) : NULL;
+#if WEBKIT_CHECK_VERSION(2, 5, 1)
+	webkit_user_content_manager_add_style_sheet(global.cm,
+		webkit_user_style_sheet_new(argv[1], WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
+		WEBKIT_USER_STYLE_LEVEL_USER, (const gchar * const *) whitelist, (const gchar * const *) blacklist));
+#else
 	webkit_web_view_group_add_user_style_sheet(webkit_web_view_get_group(wv),
 		argv[1], (strlen(argv[2]) > 0) ? argv[2] : NULL, (const gchar * const *) whitelist,
 		(const gchar * const *) blacklist, WEBKIT_INJECTED_CONTENT_FRAMES_ALL);
+#endif
 	g_strfreev(whitelist);
 	g_strfreev(blacklist);
 	return 0;
@@ -1694,7 +1707,11 @@ static int cmd_clear_cache(struct wkb *w, WebKitWebView *wv, struct command *c, 
 
 static int cmd_clear_ss(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
+#if WEBKIT_CHECK_VERSION(2, 5, 1)
+	webkit_user_content_manager_remove_all_style_sheets(global.cm);
+#else
 	webkit_web_view_group_remove_all_user_style_sheets(webkit_web_view_get_group(wv));
+#endif
 	return 0;
 }
 
@@ -2750,6 +2767,9 @@ int main(int argc, char *argv[])
 	gtk_init(NULL, NULL);
 	webkit_web_context_set_process_model(webkit_web_context_get_default(), WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 	global.settings = webkit_settings_new();
+#if WEBKIT_CHECK_VERSION(2, 5, 1)
+	global.cm = webkit_user_content_manager_new();
+#endif
 	g_signal_connect(webkit_web_context_get_default(), "download-started", G_CALLBACK(cb_download), NULL);
 	global.default_width = DEFAULT_WIDTH;
 	global.default_height = DEFAULT_HEIGHT;

@@ -11,8 +11,13 @@ CFLAGS="-Os -Wall $CFLAGS"
 LDFLAGS="-lm $LDFLAGS"
 EXEC_NAME="wkb"
 
-CFLAGS="$CFLAGS $(pkg-config --cflags gtk+-3.0 webkit2gtk-3.0)"
-LDFLAGS="$LDFLAGS $(pkg-config --libs gtk+-3.0 webkit2gtk-3.0)"
+WEBKIT_PKG=webkit2gtk-3.0
+if pkg-config --exists webkit2gtk-4.0; then
+	WEBKIT_PKG=webkit2gtk-4.0
+fi
+
+CFLAGS="$CFLAGS $(pkg-config --cflags gtk+-3.0 $WEBKIT_PKG)"
+LDFLAGS="$LDFLAGS $(pkg-config --libs gtk+-3.0 $WEBKIT_PKG)"
 
 echo "CFLAGS: $CFLAGS"
 echo "LDLAGS: $LDFLAGS"
