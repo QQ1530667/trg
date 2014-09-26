@@ -787,7 +787,8 @@ static GtkWidget * new_tab(struct wkb *w, WebKitWebView *v, const gchar *uri)
 	LIST_ADD_HEAD(&w->tabs, (struct node *) t);
 	gtk_notebook_insert_page(GTK_NOTEBOOK(w->nb), wv, gtk_label_new(NULL), gtk_notebook_get_current_page(GTK_NOTEBOOK(w->nb)) + 1);
 	gtk_container_child_set(GTK_CONTAINER(w->nb), wv, "tab-expand", TRUE, NULL);
-	gtk_misc_set_alignment(GTK_MISC(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), wv)), 0.0, 0.5);
+	gtk_widget_set_halign(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), wv), GTK_ALIGN_START);
+	gtk_widget_set_valign(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), wv), GTK_ALIGN_CENTER);
 	gtk_label_set_ellipsize(GTK_LABEL(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), wv)), PANGO_ELLIPSIZE_END);
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), wv));
 	open_uri(WEBKIT_WEB_VIEW(wv), uri);
@@ -826,7 +827,8 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 
 	w->uri_l = gtk_label_new(NULL);
 	gtk_widget_set_name(w->uri_l, "wkb-uri");
-	gtk_misc_set_alignment(GTK_MISC(w->uri_l), 0.0, 0.5);
+	gtk_widget_set_halign(w->uri_l, GTK_ALIGN_START);
+	gtk_widget_set_valign(w->uri_l, GTK_ALIGN_CENTER);
 	gtk_label_set_ellipsize(GTK_LABEL(w->uri_l), PANGO_ELLIPSIZE_END);
 	gtk_widget_show(w->uri_l);
 	w->mode_l = gtk_label_new(NULL);
@@ -884,7 +886,6 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 
 	w->w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_widget_set_name(w->w, "wkb");
-	gtk_window_set_has_resize_grip(GTK_WINDOW(w->w), FALSE);
 	gtk_window_set_geometry_hints(GTK_WINDOW(w->w), NULL, &hints, GDK_HINT_MIN_SIZE|GDK_HINT_BASE_SIZE);
 	gtk_window_set_default_size(GTK_WINDOW(w->w), global.default_width, global.default_height);
 	g_signal_connect_after(w->w, "destroy", G_CALLBACK(cb_destroy), w);
