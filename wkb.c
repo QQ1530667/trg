@@ -1281,8 +1281,8 @@ static void update_title(struct tab *t)
 	WebKitWebView *wv = GET_VIEW_FROM_CHILD(t->c);
 	gdouble progress = webkit_web_view_get_estimated_load_progress(wv);
 	const gchar *title = webkit_web_view_get_title(wv);
-	if (title == NULL) title = webkit_web_view_get_uri(wv);
-	if (title == NULL) title = null_title;
+	if (title == NULL || strlen(title) == 0) title = webkit_web_view_get_uri(wv);
+	if (title == NULL || strlen(title) == 0) title = null_title;
 	gchar *tab_title;
 	if (progress == 0.0 || progress == 1.0)
 		tab_title = g_strdup_printf("%d  %s", gtk_notebook_page_num(GTK_NOTEBOOK(t->w->nb), t->c) + 1, title);
