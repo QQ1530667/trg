@@ -1356,30 +1356,56 @@ static GtkWidget * cb_create(WebKitWebView *wv, struct wkb *w)
 
 static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, WebKitPolicyDecisionType dt, struct wkb *w)
 {
+#if WEBKIT_CHECK_VERSION(2, 6, 0)
+	WebKitNavigationAction *na;
+#else
 	WebKitNavigationPolicyDecision *nd;
-	if (dt == WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
-		nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
-		if (webkit_navigation_policy_decision_get_mouse_button(nd) == 2) {
-			if (webkit_navigation_policy_decision_get_modifiers(nd) & GDK_SHIFT_MASK)
-				new_window(g_malloc0(sizeof(struct wkb)), webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
-			else
+#endif
+	switch (dt) {
+		case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
+#if WEBKIT_CHECK_VERSION(2, 6, 0)
+			na = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(d));
+			if (webkit_navigation_action_get_mouse_button(na) == 2) {
+				if (webkit_navigation_action_get_modifiers(na) & GDK_SHIFT_MASK)
+					new_window(g_malloc0(sizeof(struct wkb)), webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
+				else
+					new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
+				webkit_policy_decision_ignore(d);
+				return TRUE;
+			}
+#else
+			nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
+			if (webkit_navigation_policy_decision_get_mouse_button(nd) == 2) {
+				if (webkit_navigation_policy_decision_get_modifiers(nd) & GDK_SHIFT_MASK)
+					new_window(g_malloc0(sizeof(struct wkb)), webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
+				else
+					new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
+				webkit_policy_decision_ignore(d);
+				return TRUE;
+			}
+#endif
+			break;
+		case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION:
+#if WEBKIT_CHECK_VERSION(2, 6, 0)
+			na = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(d));
+			if (webkit_navigation_action_get_navigation_type(na) == WEBKIT_NAVIGATION_TYPE_LINK_CLICKED) {
+				new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
+				webkit_policy_decision_ignore(d);
+				return TRUE;
+			}
+#else
+			nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
+			if (webkit_navigation_policy_decision_get_navigation_type(nd) == WEBKIT_NAVIGATION_TYPE_LINK_CLICKED) {
 				new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
-			webkit_policy_decision_ignore(d);
-			return TRUE;
-		}
-	}
-	else if (dt == WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION) {
-		nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
-		if (webkit_navigation_policy_decision_get_navigation_type(nd) == WEBKIT_NAVIGATION_TYPE_LINK_CLICKED) {
-			new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
-			webkit_policy_decision_ignore(d);
-			return TRUE;
-		}
-	}
-	else if (dt == WEBKIT_POLICY_DECISION_TYPE_RESPONSE) {
-		if (webkit_web_view_can_show_mime_type(wv, webkit_uri_response_get_mime_type(webkit_response_policy_decision_get_response(WEBKIT_RESPONSE_POLICY_DECISION(d)))))
-			webkit_policy_decision_use(d);
-		else webkit_policy_decision_download(d);
+				webkit_policy_decision_ignore(d);
+				return TRUE;
+			}
+#endif
+			break;
+		case WEBKIT_POLICY_DECISION_TYPE_RESPONSE:
+			if (!webkit_web_view_can_show_mime_type(wv, webkit_uri_response_get_mime_type(webkit_response_policy_decision_get_response(WEBKIT_RESPONSE_POLICY_DECISION(d)))))
+				webkit_policy_decision_download(d);
+			break;
 	}
 	return FALSE;
 }
@@ -2766,7 +2792,11 @@ int main(int argc, char *argv[])
 	GString *str;
 	memset(&global, 0, sizeof(global));
 	gtk_init(NULL, NULL);
+#ifdef WITH_SHARED
+	webkit_web_context_set_process_model(webkit_web_context_get_default(), WEBKIT_PROCESS_MODEL_SHARED_SECONDARY_PROCESS);
+#else
 	webkit_web_context_set_process_model(webkit_web_context_get_default(), WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
+#endif
 	global.settings = webkit_settings_new();
 #if WEBKIT_CHECK_VERSION(2, 5, 1)
 	global.cm = webkit_user_content_manager_new();

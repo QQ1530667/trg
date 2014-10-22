@@ -16,6 +16,8 @@ if pkg-config --exists webkit2gtk-4.0; then
 	WEBKIT_PKG=webkit2gtk-4.0
 fi
 
+[ "$WITH_SHARED" = "y" ] && CFLAGS="$CFLAGS -DWITH_SHARED"
+
 CFLAGS="$CFLAGS $(pkg-config --cflags gtk+-3.0 $WEBKIT_PKG)"
 LDFLAGS="$LDFLAGS $(pkg-config --libs gtk+-3.0 $WEBKIT_PKG)"
 
