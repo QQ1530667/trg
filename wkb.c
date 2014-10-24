@@ -228,7 +228,11 @@ static void update_uri_l(struct wkb *, const gchar *, const gchar *);
 static void cb_close(WebKitWebView *, struct tab *);
 static gboolean cb_cmd_fifo_in(GIOChannel *, GIOCondition, struct wkb *);
 static void cb_console_size_allocate(WebKitWebView *, GdkRectangle *, struct wkb *);
+#if WEBKIT_CHECK_VERSION(2, 5, 1)
+static GtkWidget * cb_create(WebKitWebView *, WebKitNavigationAction *, struct wkb *);
+#else
 static GtkWidget * cb_create(WebKitWebView *, struct wkb *);
+#endif
 static gboolean cb_decide_policy(WebKitWebView *, WebKitPolicyDecision *, WebKitPolicyDecisionType, struct wkb *);
 static void cb_destroy(WebKitWebView *, struct wkb *);
 static void cb_download(WebKitWebContext *, WebKitDownload *, void *);
@@ -1348,7 +1352,11 @@ static void cb_console_size_allocate(WebKitWebView *wv, GdkRectangle *allocation
 	}
 }
 
+#if WEBKIT_CHECK_VERSION(2, 5, 1)
+static GtkWidget * cb_create(WebKitWebView *wv, WebKitNavigationAction *na, struct wkb *w)
+#else
 static GtkWidget * cb_create(WebKitWebView *wv, struct wkb *w)
+#endif
 {
 	if (global.allow_popups) return new_tab(w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL);
 	else return NULL;
@@ -1388,18 +1396,12 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 		case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION:
 #if WEBKIT_CHECK_VERSION(2, 6, 0)
 			na = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(d));
-			if (webkit_navigation_action_get_navigation_type(na) == WEBKIT_NAVIGATION_TYPE_LINK_CLICKED) {
-				new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
+			if (webkit_navigation_action_get_navigation_type(na) != WEBKIT_NAVIGATION_TYPE_LINK_CLICKED)
 				webkit_policy_decision_ignore(d);
-				return TRUE;
-			}
 #else
 			nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
-			if (webkit_navigation_policy_decision_get_navigation_type(nd) == WEBKIT_NAVIGATION_TYPE_LINK_CLICKED) {
-				new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
+			if (webkit_navigation_policy_decision_get_navigation_type(nd) != WEBKIT_NAVIGATION_TYPE_LINK_CLICKED)
 				webkit_policy_decision_ignore(d);
-				return TRUE;
-			}
 #endif
 			break;
 		case WEBKIT_POLICY_DECISION_TYPE_RESPONSE:
