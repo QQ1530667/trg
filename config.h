@@ -74,6 +74,8 @@ static gchar cmd_last_desc[]          = "last: switch to the previously displaye
 static gchar cmd_last_usage[]         = "last: usage: last\n";
 static gchar cmd_loadconfig_desc[]    = "loadconfig: load configuration file(s); relative to {"VAR_CONFIG_DIR"} if not full path\n";
 static gchar cmd_loadconfig_usage[]   = "loadconfig: usage: loadconfig <file ...>\n";
+static gchar cmd_msg_desc[]           = "msg: display a message in the status bar for 1s\n";
+static gchar cmd_msg_usage[]          = "msg: usage: msg [args ...]\n";
 static gchar cmd_nav_desc[]           = "nav: navigate back or forward\n";
 static gchar cmd_nav_usage[]          = "nav: usage: nav [+|-]<number>\n";
 static gchar cmd_necho_desc[]         = "necho: print args to console; do not force console to be shown\n";
@@ -147,6 +149,7 @@ static struct command commands[] = {
 	{ "js-file",         cmd_js_file_desc,      cmd_js_file_usage,      cmd_js_file },
 	{ "last",            cmd_last_desc,         cmd_last_usage,         cmd_last },
 	{ "loadconfig",      cmd_loadconfig_desc,   cmd_loadconfig_usage,   cmd_loadconfig },
+	{ "msg",             cmd_msg_desc,          cmd_msg_usage,          cmd_msg },
 	{ "nav",             cmd_nav_desc,          cmd_nav_usage,          cmd_nav },
 	{ "necho",           cmd_necho_desc,        cmd_necho_usage,        cmd_echo },
 	{ "nset",            cmd_nset_desc,         cmd_nset_usage,         cmd_set },
@@ -226,9 +229,9 @@ static const gchar *builtin_config[] = {
 	"bind n 1 i run \"set-mode p\"",
 	"bind nci c e run \"set "VAR_SHOW_CONSOLE" !\"",
 	"bind nc - Tab run \"set "VAR_SHOW_CONSOLE" !\"",
-	"bind nci c s run \"set "VAR_AUTO_SCROLL" !; necho "VAR_AUTO_SCROLL"=\\{"VAR_AUTO_SCROLL"}\"",
-	"bind nci c k run \"set "VAR_PRINT_KEYVAL" !; necho "VAR_PRINT_KEYVAL"=\\{"VAR_PRINT_KEYVAL"}\"",
-	"bind nci c w run \"set "VAR_ALLOW_POPUPS" !; necho "VAR_ALLOW_POPUPS"=\\{"VAR_ALLOW_POPUPS"}\"",
+	"bind nci c s run \"set "VAR_AUTO_SCROLL" !; msg "VAR_AUTO_SCROLL"=\\{"VAR_AUTO_SCROLL"}\"",
+	"bind nci c k run \"set "VAR_PRINT_KEYVAL" !; msg "VAR_PRINT_KEYVAL"=\\{"VAR_PRINT_KEYVAL"}\"",
+	"bind nci c w run \"set "VAR_ALLOW_POPUPS" !; msg "VAR_ALLOW_POPUPS"=\\{"VAR_ALLOW_POPUPS"}\"",
 	"bind nci c c run clear",
 	"bind nci 1 l run \"switch +1\"",
 	"bind nci 1 h run \"switch -1\"",

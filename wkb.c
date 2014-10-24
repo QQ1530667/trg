@@ -77,8 +77,8 @@ struct wkb {
 	struct node n;
 	int id;
 	GtkWidget *w, *nb, *bar_nb, *vb, *bar_hb, *bar_evb, *i, *consw, *con,
-		*uri_l, *mode_l, *tabs_l, *id_l, *dl_l;
-	guint mode;
+		*uri_l, *msg_l, *mode_l, *tabs_l, *id_l, *dl_l;
+	guint mode, timeout;
 	struct list tabs;
 	struct hist *current_hist;
 	gchar *tmp_line;
@@ -275,6 +275,7 @@ static int cmd_js(struct wkb *, WebKitWebView *, struct command *, int, gchar **
 static int cmd_js_file(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_last(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_loadconfig(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_msg(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_nav(struct wkb *,  WebKitWebView *,struct command *, int, gchar **);
 static int cmd_open_input(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_open(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
@@ -846,6 +847,8 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 	gtk_widget_show(w->id_l);
 	w->dl_l = gtk_label_new("[dl:]");
 	gtk_widget_set_name(w->dl_l, "wkb-download");
+	w->msg_l = gtk_label_new(NULL);
+	gtk_widget_set_name(w->msg_l, "wkb-msg");
 
 	w->bar_hb = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_box_pack_start(GTK_BOX(w->bar_hb), w->uri_l, TRUE, TRUE, 0);
@@ -853,6 +856,7 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 	gtk_box_pack_end(GTK_BOX(w->bar_hb), w->tabs_l, FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(w->bar_hb), w->mode_l, FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(w->bar_hb), w->dl_l, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(w->bar_hb), w->msg_l, FALSE, FALSE, 0);
 	gtk_widget_show(w->bar_hb);
 
 	w->bar_evb = gtk_event_box_new();
@@ -1944,6 +1948,26 @@ static int cmd_loadconfig(struct wkb *w, WebKitWebView *wv, struct command *c, i
 			err = NULL;
 		}
 	}
+	return 0;
+}
+
+static gboolean msg_timeout(struct wkb *w)
+{
+	w->timeout = 0;
+	gtk_widget_hide(w->msg_l);
+	return FALSE;
+}
+
+static int cmd_msg(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+{
+	GString *str = concat_args(argc, argv);
+	if (strlen(str->str) > 0) {
+		gtk_label_set_text(GTK_LABEL(w->msg_l), str->str);
+		gtk_widget_show(w->msg_l);
+		if (w->timeout) g_source_remove(w->timeout);
+		w->timeout = g_timeout_add(1000, (GSourceFunc) msg_timeout, w);
+	}
+	g_string_free(str, TRUE);
 	return 0;
 }
 
