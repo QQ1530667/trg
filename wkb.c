@@ -197,6 +197,7 @@ static gchar * get_var_value(struct wkb *, WebKitWebView *, struct var *, int co
 static struct default_wkb_setting * get_wkb_setting(struct wkb *, const gchar *);
 static void init_cmd_fifo(struct wkb *);
 static int modmask_compare(guint, guint);
+static void msg(struct wkb *, const gchar *);
 static void navigate(struct wkb *, WebKitWebView *, int);
 static struct alias * new_alias(struct wkb *, const gchar *, const gchar *);
 static struct bind * new_bind(struct wkb *);
@@ -707,6 +708,21 @@ static int modmask_compare(guint mod, guint gdk_state)
 	if (gdk_state & GDK_MOD4_MASK)    m |= MOD_MOD4;
 	if (gdk_state & GDK_MOD5_MASK)    m |= MOD_MOD5;
 	return m == mod;
+}
+
+static gboolean msg_timeout(struct wkb *w)
+{
+	w->timeout = 0;
+	gtk_widget_hide(w->msg_l);
+	return FALSE;
+}
+
+static void msg(struct wkb *w, const gchar *s)
+{
+	gtk_label_set_text(GTK_LABEL(w->msg_l), s);
+	gtk_widget_show(w->msg_l);
+	if (w->timeout) g_source_remove(w->timeout);
+	w->timeout = g_timeout_add(1000, (GSourceFunc) msg_timeout, w);
 }
 
 static void navigate(struct wkb *w, WebKitWebView *v, int n)
@@ -1365,7 +1381,10 @@ static GtkWidget * cb_create(WebKitWebView *wv, struct wkb *w)
 #endif
 {
 	if (global.allow_popups) return new_tab(w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL);
-	else return NULL;
+	else {
+		msg(w, "cb_create(): blocked");
+		return NULL;
+	}
 }
 
 static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, WebKitPolicyDecisionType dt, struct wkb *w)
@@ -1953,22 +1972,10 @@ static int cmd_loadconfig(struct wkb *w, WebKitWebView *wv, struct command *c, i
 	return 0;
 }
 
-static gboolean msg_timeout(struct wkb *w)
-{
-	w->timeout = 0;
-	gtk_widget_hide(w->msg_l);
-	return FALSE;
-}
-
 static int cmd_msg(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str = concat_args(argc, argv);
-	if (strlen(str->str) > 0) {
-		gtk_label_set_text(GTK_LABEL(w->msg_l), str->str);
-		gtk_widget_show(w->msg_l);
-		if (w->timeout) g_source_remove(w->timeout);
-		w->timeout = g_timeout_add(1000, (GSourceFunc) msg_timeout, w);
-	}
+	if (strlen(str->str) > 0) msg(w, str->str);
 	g_string_free(str, TRUE);
 	return 0;
 }
