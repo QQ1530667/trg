@@ -425,6 +425,8 @@ static gchar * construct_uri(const gchar *uri)
 	int i = 0;
 	if (uri == NULL) return NULL;
 	else if (uri[0] == '\0') return g_strdup(uri);
+	else if (uri[0] == '.' && uri[1] == '/') return g_strconcat("file://", getenv("PWD"), &uri[1], NULL);
+	else if (uri[0] == '/') return g_strconcat("file://", uri, NULL);
 	for (i = 0; uri[i] != '\0'; ++i) {
 		if (uri[i] == '.') break;
 		else if (uri[i] == ':') return g_strdup(uri);
