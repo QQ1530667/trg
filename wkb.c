@@ -73,7 +73,7 @@ static struct {
 #endif
 } global;
 
-struct wkb {
+struct window {
 	struct node n;
 	int id;
 	GtkWidget *w, *nb, *bar_nb, *vb, *bar_hb, *bar_evb, *i, *consw, *con,
@@ -119,7 +119,7 @@ struct hist {
 struct tab {
 	struct node n;
 	GtkWidget *c;
-	struct wkb *w;
+	struct window *w;
 };
 
 struct download {
@@ -139,18 +139,18 @@ struct command {
 	gchar *name;
 	gchar *desc;
 	gchar *usage;
-	int (*func)(struct wkb *, WebKitWebView *, struct command *, int argc, gchar **argv);
+	int (*func)(struct window *, WebKitWebView *, struct command *, int argc, gchar **argv);
 };
 
 struct var_handler {
-	int (*sh)(struct wkb *, WebKitWebView *, struct var *, const gchar *);
-	gchar * (*gh)(struct wkb *, WebKitWebView *, struct var *, int);
-	void (*init)(struct wkb *, WebKitWebView *, struct var_handler *);
+	int (*set)(struct window *, WebKitWebView *, struct var *, const gchar *);
+	gchar * (*get)(struct window *, WebKitWebView *, struct var *, int);
+	void (*init)(struct window *, WebKitWebView *, struct var_handler *);
 };
 
 struct bind_handler {
 	gchar *name;
-	gboolean (*func)(struct wkb *, struct bind *);
+	gboolean (*func)(struct window *, struct bind *);
 };
 
 union wkb_setting {
@@ -164,203 +164,203 @@ struct default_wkb_setting {
 	gchar *name;
 	int scope;
 	int type;
-	union wkb_setting (*get)(struct wkb *, int);
-	void (*set)(struct wkb *, union wkb_setting);
+	union wkb_setting (*get)(struct window *, int);
+	void (*set)(struct window *, union wkb_setting);
 	union wkb_setting default_value;
 };
 
 /* Internal functions */
-static void add_gobject_properties(struct wkb *, struct var_handler *, GObject *, const gchar *);
+static void add_gobject_properties(struct window *, struct var_handler *, GObject *, const gchar *);
 static struct token * append_token(struct list *, const gchar *, int);
 static GString * concat_args(int, gchar **);
 static gchar * construct_uri(const gchar *);
-static void destroy_alias(struct wkb *, struct alias *);
-static void destroy_bind(struct wkb *, struct bind *);
-static void destroy_cmd_fifo(struct wkb *);
+static void destroy_alias(struct window *, struct alias *);
+static void destroy_bind(struct window *, struct bind *);
+static void destroy_cmd_fifo(struct window *);
 static void destroy_download(struct download *);
 static void destroy_tab(struct tab *);
 static struct token * destroy_token(struct list *, struct token *);
 static void destroy_token_list(struct list *);
-static void destroy_var(struct wkb *, struct var *);
+static void destroy_var(struct window *, struct var *);
 static GString * escape_string(const gchar *);
 static void eval_js(WebKitWebView *, const gchar *, const gchar *, int);
-static void exec_line(struct wkb *, WebKitWebView *, const gchar *);
-static void fullscreen_mode(struct wkb *, gboolean);
-static struct alias * get_alias(struct wkb *, const gchar *);
-static struct bind * get_bind(struct wkb *, guint, guint, const gchar *);
+static void exec_line(struct window *, WebKitWebView *, const gchar *);
+static void fullscreen_mode(struct window *, gboolean);
+static struct alias * get_alias(struct window *, const gchar *);
+static struct bind * get_bind(struct window *, guint, guint, const gchar *);
 static struct download * get_download(int);
 static gchar * get_mod_string(guint, gchar [8]);
 static gchar * get_mode_string(guint, gchar [5]);
-static struct var * get_var(struct wkb *, const gchar *);
-static GObject * get_var_gobject(struct wkb *, WebKitWebView *, struct var *, gchar **);
-static gchar * get_var_value(struct wkb *, WebKitWebView *, struct var *, int context);
-static struct default_wkb_setting * get_wkb_setting(struct wkb *, const gchar *);
-static void init_cmd_fifo(struct wkb *);
+static struct var * get_var(struct window *, const gchar *);
+static GObject * get_var_gobject(struct window *, WebKitWebView *, struct var *, gchar **);
+static gchar * get_var_value(struct window *, WebKitWebView *, struct var *, int context);
+static struct default_wkb_setting * get_wkb_setting(struct window *, const gchar *);
+static void init_cmd_fifo(struct window *);
 static int modmask_compare(guint, guint);
-static void msg(struct wkb *, const gchar *);
-static void navigate(struct wkb *, WebKitWebView *, int);
-static struct alias * new_alias(struct wkb *, const gchar *, const gchar *);
-static struct bind * new_bind(struct wkb *);
+static void msg(struct window *, const gchar *);
+static void navigate(struct window *, WebKitWebView *, int);
+static struct alias * new_alias(struct window *, const gchar *, const gchar *);
+static struct bind * new_bind(struct window *);
 static struct download * new_download(WebKitDownload *, const gchar *);
-static struct hist * new_hist(struct wkb *, const gchar *);
-static GtkWidget * new_tab(struct wkb *, WebKitWebView *, const gchar *);
-static struct var * new_var(struct wkb *, const gchar *, int);
-static struct wkb * new_window(struct wkb *, const gchar *);
-static void open_download(struct wkb *, WebKitWebView *, struct download *, const gchar *);
-static void open_input(struct wkb *, const gchar *);
+static struct hist * new_hist(struct window *, const gchar *);
+static GtkWidget * new_tab(struct window *, WebKitWebView *, const gchar *);
+static struct var * new_var(struct window *, const gchar *, int);
+static struct window * new_window(struct window *, const gchar *);
+static void open_download(struct window *, WebKitWebView *, struct download *, const gchar *);
+static void open_input(struct window *, const gchar *);
 static void open_uri(WebKitWebView *, const gchar *);
-static gchar * out(struct wkb *, gboolean, gchar *);
-static int parse(struct wkb *, WebKitWebView *, struct list *, gchar **);
-static void parse_mode_and_mod_mask(struct wkb *, const gchar *, const gchar *, guint *, guint *, const gchar *);
-static void print_bind(struct wkb *, struct bind *);
-static void print_download(struct wkb *, struct download *);
+static gchar * out(struct window *, gboolean, gchar *);
+static int parse(struct window *, WebKitWebView *, struct list *, gchar **);
+static void parse_mode_and_mod_mask(struct window *, const gchar *, const gchar *, guint *, guint *, const gchar *);
+static void print_bind(struct window *, struct bind *);
+static void print_download(struct window *, struct download *);
 static void quit(void);
-static void set_mode(struct wkb *, guint);
-static int set_var_value(struct wkb *, WebKitWebView *, struct var *, const gchar *);
+static void set_mode(struct window *, guint);
+static int set_var_value(struct window *, WebKitWebView *, struct var *, const gchar *);
 static void signal_handler(int);
 static void tokenize(const gchar *, struct list *);
 static void tokenize_expansion(const gchar *, struct list *);
-static void update_dl_l(struct wkb *);
-static void update_tabs_l(struct wkb *);
+static void update_dl_l(struct window *);
+static void update_tabs_l(struct window *);
 static void update_title(struct tab *);
-static void update_uri_l(struct wkb *, const gchar *, const gchar *);
+static void update_uri_l(struct window *, const gchar *, const gchar *);
 
 /* Callback functions */
 static void cb_close(WebKitWebView *, struct tab *);
-static gboolean cb_cmd_fifo_in(GIOChannel *, GIOCondition, struct wkb *);
-static void cb_console_size_allocate(WebKitWebView *, GdkRectangle *, struct wkb *);
+static gboolean cb_cmd_fifo_in(GIOChannel *, GIOCondition, struct window *);
+static void cb_console_size_allocate(WebKitWebView *, GdkRectangle *, struct window *);
 #if WEBKIT_CHECK_VERSION(2, 5, 1)
-static GtkWidget * cb_create(WebKitWebView *, WebKitNavigationAction *, struct wkb *);
+static GtkWidget * cb_create(WebKitWebView *, WebKitNavigationAction *, struct window *);
 #else
-static GtkWidget * cb_create(WebKitWebView *, struct wkb *);
+static GtkWidget * cb_create(WebKitWebView *, struct window *);
 #endif
-static gboolean cb_decide_policy(WebKitWebView *, WebKitPolicyDecision *, WebKitPolicyDecisionType, struct wkb *);
-static void cb_destroy(WebKitWebView *, struct wkb *);
+static gboolean cb_decide_policy(WebKitWebView *, WebKitPolicyDecision *, WebKitPolicyDecisionType, struct window *);
+static void cb_destroy(WebKitWebView *, struct window *);
 static void cb_download(WebKitWebContext *, WebKitDownload *, void *);
 static gboolean cb_download_decide_destination(WebKitDownload *, gchar *, void *);
 static void cb_download_failed(WebKitDownload *, GError *, struct download *);
 static void cb_download_finished(WebKitDownload *, struct download *);
-static gboolean cb_enter_fullscreen(WebKitWebView *, struct wkb *);
-static void cb_input_end(WebKitWebView *, struct wkb *);
-static gboolean cb_keypress(WebKitWebView *, GdkEventKey *, struct wkb *);
-static gboolean cb_leave_fullscreen(WebKitWebView *, struct wkb *);
-static void cb_load_changed(WebKitWebView *, WebKitLoadEvent, struct wkb *);
-static void cb_mouse_target_changed(WebKitWebView *, WebKitHitTestResult *, guint, struct wkb *);
+static gboolean cb_enter_fullscreen(WebKitWebView *, struct window *);
+static void cb_input_end(WebKitWebView *, struct window *);
+static gboolean cb_keypress(WebKitWebView *, GdkEventKey *, struct window *);
+static gboolean cb_leave_fullscreen(WebKitWebView *, struct window *);
+static void cb_load_changed(WebKitWebView *, WebKitLoadEvent, struct window *);
+static void cb_mouse_target_changed(WebKitWebView *, WebKitHitTestResult *, guint, struct window *);
 static void cb_progress_changed(WebKitWebView *, GParamSpec *, struct tab *);
-static void cb_tab_changed(WebKitWebView *, GtkWidget *, guint, struct wkb *);
+static void cb_tab_changed(WebKitWebView *, GtkWidget *, guint, struct window *);
 static void cb_title_changed(WebKitWebView *, GParamSpec *, struct tab *);
 static void cb_uri_changed(WebKitWebView *, GParamSpec *, struct tab *);
 
 /* Bind functions */
-static gboolean bind_hist_next(struct wkb *, struct bind *);
-static gboolean bind_hist_prev(struct wkb *, struct bind *);
-static gboolean bind_pass(struct wkb *, struct bind *);
-static gboolean bind_run(struct wkb *, struct bind *);
+static gboolean bind_hist_next(struct window *, struct bind *);
+static gboolean bind_hist_prev(struct window *, struct bind *);
+static gboolean bind_pass(struct window *, struct bind *);
+static gboolean bind_run(struct window *, struct bind *);
 
 /* Command functions */
-static int cmd_add_ss(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_alias(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_bind(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_clear(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_clear_cache(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_clear_ss(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_dl_cancel(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_dl_clear(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_dl_new(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_dl_open(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_dl_status(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_echo(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_find(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_help(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_js(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_js_file(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_last(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_loadconfig(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_msg(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_nav(struct wkb *,  WebKitWebView *,struct command *, int, gchar **);
-static int cmd_open_input(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_open(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_print(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_quit(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_reload(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_reload_nc(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_reorder(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_set(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_set_mode(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_spawn(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_stop(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_switch(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_tclose(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_topen(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_unalias(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_unbind(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_unset(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_wclose(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_window(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_wopen(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
-static int cmd_zoom(struct wkb *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_add_ss(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_alias(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_bind(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_clear(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_clear_cache(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_clear_ss(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_dl_cancel(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_dl_clear(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_dl_new(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_dl_open(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_dl_status(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_echo(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_find(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_help(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_js(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_js_file(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_last(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_loadconfig(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_msg(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_nav(struct window *,  WebKitWebView *,struct command *, int, gchar **);
+static int cmd_open_input(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_open(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_print(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_quit(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_reload(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_reload_nc(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_reorder(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_set(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_set_mode(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_spawn(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_stop(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_switch(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_tclose(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_topen(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_unalias(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_unbind(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_unset(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_wclose(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_window(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_wopen(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_zoom(struct window *, WebKitWebView *, struct command *, int, gchar **);
 
 /* Set/get/init handler functions */
-static gchar * get_handler_gobject(struct wkb *, WebKitWebView *, struct var *, int);
-static gchar * get_handler_wkb(struct wkb *, WebKitWebView *, struct var *, int);
-static void init_handler_gobject(struct wkb *, WebKitWebView *, struct var_handler *);
-static void init_handler_wkb(struct wkb *, WebKitWebView *, struct var_handler *);
-static int set_handler_gobject(struct wkb *, WebKitWebView *, struct var *, const gchar *);
-static int set_handler_wkb(struct wkb *, WebKitWebView *, struct var *, const gchar *);
+static gchar * get_handler_gobject(struct window *, WebKitWebView *, struct var *, int);
+static gchar * get_handler_wkb(struct window *, WebKitWebView *, struct var *, int);
+static void init_handler_gobject(struct window *, WebKitWebView *, struct var_handler *);
+static void init_handler_wkb(struct window *, WebKitWebView *, struct var_handler *);
+static int set_handler_gobject(struct window *, WebKitWebView *, struct var *, const gchar *);
+static int set_handler_wkb(struct window *, WebKitWebView *, struct var *, const gchar *);
 
 /* Wkb setting accessor/mutator functions */
-static union wkb_setting get_webkit_api(struct wkb *, int);
-static union wkb_setting get_cmd_fifo(struct wkb *, int);
-static union wkb_setting get_config_dir(struct wkb *, int);
-static void set_config_dir(struct wkb *, union wkb_setting);
-static union wkb_setting get_cookie_file(struct wkb *, int);
-static void set_cookie_file(struct wkb *, union wkb_setting);
-static union wkb_setting get_cookie_policy(struct wkb *, int);
-static void set_cookie_policy(struct wkb *, union wkb_setting);
-static union wkb_setting get_auto_scroll(struct wkb *, int);
-static void set_auto_scroll(struct wkb *, union wkb_setting);
-static union wkb_setting get_show_console(struct wkb *, int);
-static void set_show_console(struct wkb *, union wkb_setting);
-static union wkb_setting get_print_keyval(struct wkb *, int);
-static void set_print_keyval(struct wkb *, union wkb_setting);
-static union wkb_setting get_fullscreen(struct wkb *, int);
-static void set_fullscreen(struct wkb *, union wkb_setting);
-static union wkb_setting get_allow_popups(struct wkb *, int);
-static void set_allow_popups(struct wkb *, union wkb_setting);
-static union wkb_setting get_download_dir(struct wkb *, int);
-static void set_download_dir(struct wkb *, union wkb_setting);
-static union wkb_setting get_dl_open_cmd(struct wkb *, int);
-static void set_dl_open_cmd(struct wkb *, union wkb_setting);
-static union wkb_setting get_dl_auto_open(struct wkb *, int);
-static void set_dl_auto_open(struct wkb *, union wkb_setting);
-static union wkb_setting get_default_width(struct wkb *, int);
-static void set_default_width(struct wkb *, union wkb_setting);
-static union wkb_setting get_default_height(struct wkb *, int);
-static void set_default_height(struct wkb *, union wkb_setting);
-static union wkb_setting get_spell_langs(struct wkb *, int);
-static void set_spell_langs(struct wkb *, union wkb_setting);
-static union wkb_setting get_spell(struct wkb *, int);
-static void set_spell(struct wkb *, union wkb_setting);
-static union wkb_setting get_tls_errors(struct wkb *, int);
-static void set_tls_errors(struct wkb *, union wkb_setting);
-static union wkb_setting get_find_string(struct wkb *, int);
-static void set_find_string(struct wkb *, union wkb_setting);
-static union wkb_setting get_homepage(struct wkb *, int);
-static void set_homepage(struct wkb *, union wkb_setting);
-static union wkb_setting get_current_uri(struct wkb *, int);
-static void set_current_uri(struct wkb *, union wkb_setting);
-static union wkb_setting get_fc_dir(struct wkb *, int);
-static union wkb_setting get_fc_file(struct wkb *, int);
-static union wkb_setting get_clipboard_text(struct wkb *, int);
-static void set_clipboard_text(struct wkb *, union wkb_setting);
-static union wkb_setting get_load_started(struct wkb *, int);
-static void set_load_started(struct wkb *, union wkb_setting);
-static union wkb_setting get_dom_ready(struct wkb *, int);
-static void set_dom_ready(struct wkb *, union wkb_setting);
-static union wkb_setting get_load_finished(struct wkb *, int);
-static void set_load_finished(struct wkb *, union wkb_setting);
-static union wkb_setting get_create(struct wkb *, int);
-static void set_create(struct wkb *, union wkb_setting);
+static union wkb_setting get_webkit_api(struct window *, int);
+static union wkb_setting get_cmd_fifo(struct window *, int);
+static union wkb_setting get_config_dir(struct window *, int);
+static void set_config_dir(struct window *, union wkb_setting);
+static union wkb_setting get_cookie_file(struct window *, int);
+static void set_cookie_file(struct window *, union wkb_setting);
+static union wkb_setting get_cookie_policy(struct window *, int);
+static void set_cookie_policy(struct window *, union wkb_setting);
+static union wkb_setting get_auto_scroll(struct window *, int);
+static void set_auto_scroll(struct window *, union wkb_setting);
+static union wkb_setting get_show_console(struct window *, int);
+static void set_show_console(struct window *, union wkb_setting);
+static union wkb_setting get_print_keyval(struct window *, int);
+static void set_print_keyval(struct window *, union wkb_setting);
+static union wkb_setting get_fullscreen(struct window *, int);
+static void set_fullscreen(struct window *, union wkb_setting);
+static union wkb_setting get_allow_popups(struct window *, int);
+static void set_allow_popups(struct window *, union wkb_setting);
+static union wkb_setting get_download_dir(struct window *, int);
+static void set_download_dir(struct window *, union wkb_setting);
+static union wkb_setting get_dl_open_cmd(struct window *, int);
+static void set_dl_open_cmd(struct window *, union wkb_setting);
+static union wkb_setting get_dl_auto_open(struct window *, int);
+static void set_dl_auto_open(struct window *, union wkb_setting);
+static union wkb_setting get_default_width(struct window *, int);
+static void set_default_width(struct window *, union wkb_setting);
+static union wkb_setting get_default_height(struct window *, int);
+static void set_default_height(struct window *, union wkb_setting);
+static union wkb_setting get_spell_langs(struct window *, int);
+static void set_spell_langs(struct window *, union wkb_setting);
+static union wkb_setting get_spell(struct window *, int);
+static void set_spell(struct window *, union wkb_setting);
+static union wkb_setting get_tls_errors(struct window *, int);
+static void set_tls_errors(struct window *, union wkb_setting);
+static union wkb_setting get_find_string(struct window *, int);
+static void set_find_string(struct window *, union wkb_setting);
+static union wkb_setting get_homepage(struct window *, int);
+static void set_homepage(struct window *, union wkb_setting);
+static union wkb_setting get_current_uri(struct window *, int);
+static void set_current_uri(struct window *, union wkb_setting);
+static union wkb_setting get_fc_dir(struct window *, int);
+static union wkb_setting get_fc_file(struct window *, int);
+static union wkb_setting get_clipboard_text(struct window *, int);
+static void set_clipboard_text(struct window *, union wkb_setting);
+static union wkb_setting get_load_started(struct window *, int);
+static void set_load_started(struct window *, union wkb_setting);
+static union wkb_setting get_dom_ready(struct window *, int);
+static void set_dom_ready(struct window *, union wkb_setting);
+static union wkb_setting get_load_finished(struct window *, int);
+static void set_load_finished(struct window *, union wkb_setting);
+static union wkb_setting get_create(struct window *, int);
+static void set_create(struct window *, union wkb_setting);
 
 #include "config.h"
 
@@ -384,7 +384,7 @@ enum {
 
 /* Begin internal functions */
 
-static void add_gobject_properties(struct wkb *w, struct var_handler *vh, GObject *obj, const gchar *fmt)
+static void add_gobject_properties(struct window *w, struct var_handler *vh, GObject *obj, const gchar *fmt)
 {
 	int i = 0;
 	unsigned int n_prop = 0;
@@ -435,7 +435,7 @@ static gchar * construct_uri(const gchar *uri)
 	return g_strconcat("http://", uri, NULL);
 }
 
-static void destroy_alias(struct wkb *w, struct alias *a)
+static void destroy_alias(struct window *w, struct alias *a)
 {
 	LIST_REMOVE(&global.aliases, (struct node *) a);
 	g_free(a->name);
@@ -443,7 +443,7 @@ static void destroy_alias(struct wkb *w, struct alias *a)
 	g_free(a);
 }
 
-static void destroy_bind(struct wkb *w, struct bind *b)
+static void destroy_bind(struct window *w, struct bind *b)
 {
 	LIST_REMOVE(&global.binds, (struct node *) b);
 	g_free(b->key);
@@ -451,7 +451,7 @@ static void destroy_bind(struct wkb *w, struct bind *b)
 	g_free(b);
 }
 
-static void destroy_cmd_fifo(struct wkb *w)
+static void destroy_cmd_fifo(struct window *w)
 {
 	g_source_remove(w->cmd_fifo_ioch_sid);
 	if (w->cmd_fifo_ioch != NULL) {
@@ -474,7 +474,7 @@ static void destroy_download(struct download *dl)
 
 static void destroy_tab(struct tab *t)
 {
-	struct wkb *w = t->w;
+	struct window *w = t->w;
 	webkit_web_view_stop_loading(GET_VIEW_FROM_CHILD(t->c));  /* This is required. Otherwise cb_progress_changed gets called after this function runs... */
 	if (w->tabs.h == (struct node *) t && w->tabs.h->n != NULL)
 		gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), ((struct tab *) w->tabs.h->n)->c));
@@ -500,7 +500,7 @@ static void destroy_token_list(struct list *tok)
 		destroy_token(tok, t);
 }
 
-static void destroy_var(struct wkb *w, struct var *v)
+static void destroy_var(struct window *w, struct var *v)
 {
 	LIST_REMOVE(&global.vars, (struct node *) v);
 	g_free(v->name);
@@ -527,7 +527,7 @@ static void eval_js(WebKitWebView *wv, const gchar *script, const gchar *source,
 	webkit_web_view_run_javascript(wv, script, NULL, NULL, NULL);
 }
 
-static void exec_line(struct wkb *w, WebKitWebView *wv, const gchar *line)
+static void exec_line(struct window *w, WebKitWebView *wv, const gchar *line)
 {
 	struct list tok = NEW_LIST, alias_tok = NEW_LIST;
 	struct token *t = NULL;
@@ -575,7 +575,7 @@ static void exec_line(struct wkb *w, WebKitWebView *wv, const gchar *line)
 	destroy_token_list(&tok);
 }
 
-static void fullscreen_mode(struct wkb *w, gboolean f)
+static void fullscreen_mode(struct window *w, gboolean f)
 {
 	if (f) {
 		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(w->nb), FALSE);
@@ -588,7 +588,7 @@ static void fullscreen_mode(struct wkb *w, gboolean f)
 	w->fullscreen = f;
 }
 
-static struct alias * get_alias(struct wkb *w, const gchar *name)
+static struct alias * get_alias(struct window *w, const gchar *name)
 {
 	struct alias *a;
 	LIST_FOREACH(&global.aliases, a)
@@ -597,7 +597,7 @@ static struct alias * get_alias(struct wkb *w, const gchar *name)
 	return NULL;
 }
 
-static struct bind * get_bind(struct wkb *w, guint mode, guint mod, const gchar *key)
+static struct bind * get_bind(struct window *w, guint mode, guint mod, const gchar *key)
 {
 	struct bind *b;
 	LIST_FOREACH(&global.binds, b)
@@ -641,14 +641,14 @@ static gchar * get_mode_string(guint mode, gchar str_mode[5])
 	return str_mode;
 }
 
-static struct var * get_var(struct wkb *w, const gchar *name)
+static struct var * get_var(struct window *w, const gchar *name)
 {
 	struct var *v;
 	LIST_FOREACH(&global.vars, v) if (strcmp(name, v->name) == 0) return v;
 	return NULL;
 }
 
-static GObject * get_var_gobject(struct wkb *w, WebKitWebView *wv, struct var *v, gchar **name)
+static GObject * get_var_gobject(struct window *w, WebKitWebView *wv, struct var *v, gchar **name)
 {
 	if (strncmp(v->name, VAR_PREFIX_WEBKIT_WEB_VIEW, strlen(VAR_PREFIX_WEBKIT_WEB_VIEW)) == 0) {
 		*name = &v->name[strlen(VAR_PREFIX_WEBKIT_WEB_VIEW)];
@@ -661,14 +661,14 @@ static GObject * get_var_gobject(struct wkb *w, WebKitWebView *wv, struct var *v
 	else return NULL;
 }
 
-static gchar * get_var_value(struct wkb *w, WebKitWebView *wv, struct var *v, int context)
+static gchar * get_var_value(struct window *w, WebKitWebView *wv, struct var *v, int context)
 {
 	if (v == NULL) return NULL;
-	if (v->handler == NULL || v->handler->gh == NULL) return g_strdup(v->value);
-	else return v->handler->gh(w, wv, v, context);
+	if (v->handler == NULL || v->handler->get == NULL) return g_strdup(v->value);
+	else return v->handler->get(w, wv, v, context);
 }
 
-static struct default_wkb_setting * get_wkb_setting(struct wkb *w, const gchar *name)
+static struct default_wkb_setting * get_wkb_setting(struct window *w, const gchar *name)
 {
 	int i;
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
@@ -677,7 +677,7 @@ static struct default_wkb_setting * get_wkb_setting(struct wkb *w, const gchar *
 	return NULL;
 }
 
-static void init_cmd_fifo(struct wkb *w)
+static void init_cmd_fifo(struct window *w)
 {
 	int fd;
 	w->cmd_fifo = g_strdup_printf("/tmp/wkb-%d-%d", getpid(), w->id);
@@ -710,14 +710,14 @@ static int modmask_compare(guint mod, guint gdk_state)
 	return m == mod;
 }
 
-static gboolean msg_timeout(struct wkb *w)
+static gboolean msg_timeout(struct window *w)
 {
 	w->timeout = 0;
 	gtk_widget_hide(w->msg_l);
 	return FALSE;
 }
 
-static void msg(struct wkb *w, const gchar *s)
+static void msg(struct window *w, const gchar *s)
 {
 	gtk_label_set_text(GTK_LABEL(w->msg_l), s);
 	gtk_widget_show(w->msg_l);
@@ -725,13 +725,13 @@ static void msg(struct wkb *w, const gchar *s)
 	w->timeout = g_timeout_add(1000, (GSourceFunc) msg_timeout, w);
 }
 
-static void navigate(struct wkb *w, WebKitWebView *v, int n)
+static void navigate(struct window *w, WebKitWebView *v, int n)
 {
 	WebKitBackForwardListItem *item = webkit_back_forward_list_get_nth_item(webkit_web_view_get_back_forward_list(v), n);
 	if (item != NULL) webkit_web_view_go_to_back_forward_list_item(v, item);
 }
 
-static struct alias * new_alias(struct wkb *w, const gchar *name, const gchar *value)
+static struct alias * new_alias(struct window *w, const gchar *name, const gchar *value)
 {
 	struct alias *a = g_malloc0(sizeof(struct alias));
 	a->name = g_strdup(name);
@@ -740,7 +740,7 @@ static struct alias * new_alias(struct wkb *w, const gchar *name, const gchar *v
 	return a;
 }
 
-static struct bind * new_bind(struct wkb *w)
+static struct bind * new_bind(struct window *w)
 {
 	struct bind *b = g_malloc0(sizeof(struct bind));
 	LIST_ADD_TAIL(&global.binds, (struct node *) b);
@@ -776,7 +776,7 @@ static struct download * new_download(WebKitDownload *d, const gchar *filename)
 	return NULL;
 }
 
-static struct hist * new_hist(struct wkb *w, const gchar *line)
+static struct hist * new_hist(struct window *w, const gchar *line)
 {
 	struct hist *h = g_malloc0(sizeof(struct hist));
 	h->line = g_strdup(line);
@@ -784,7 +784,7 @@ static struct hist * new_hist(struct wkb *w, const gchar *line)
 	return h;
 }
 
-static GtkWidget * new_tab(struct wkb *w, WebKitWebView *v, const gchar *uri)
+static GtkWidget * new_tab(struct window *w, WebKitWebView *v, const gchar *uri)
 {
 	GtkWidget *wv;
 	struct tab *t = g_malloc0(sizeof(struct tab));
@@ -820,7 +820,7 @@ static GtkWidget * new_tab(struct wkb *w, WebKitWebView *v, const gchar *uri)
 	return wv;
 }
 
-static struct var * new_var(struct wkb *w, const gchar *name, int can_unset)
+static struct var * new_var(struct window *w, const gchar *name, int can_unset)
 {
 	struct var *v = g_malloc0(sizeof(struct var));
 	v->name = g_strdup(name);
@@ -829,7 +829,7 @@ static struct var * new_var(struct wkb *w, const gchar *name, int can_unset)
 	return v;
 }
 
-static struct wkb * new_window(struct wkb *w, const gchar *uri)
+static struct window * new_window(struct window *w, const gchar *uri)
 {
 	int i;
 	gchar *tmp;
@@ -931,7 +931,7 @@ static struct wkb * new_window(struct wkb *w, const gchar *uri)
 	return w;
 }
 
-static void open_download(struct wkb *w, WebKitWebView *wv, struct download *dl, const gchar *fmt)
+static void open_download(struct window *w, WebKitWebView *wv, struct download *dl, const gchar *fmt)
 {
 	int i, k;
 	GString *str = g_string_new(NULL), *escaped_filename;
@@ -953,7 +953,7 @@ static void open_download(struct wkb *w, WebKitWebView *wv, struct download *dl,
 	g_string_free(escaped_filename, TRUE);
 }
 
-static void open_input(struct wkb *w, const gchar *str)
+static void open_input(struct window *w, const gchar *str)
 {
 	set_mode(w, MODE_CMD);
 	if (str != NULL) gtk_entry_set_text(GTK_ENTRY(w->i), str);
@@ -975,7 +975,7 @@ static void open_uri(WebKitWebView *wv, const gchar *uri)
 	}
 }
 
-static gchar * out(struct wkb *w, gboolean show, gchar *e)
+static gchar * out(struct window *w, gboolean show, gchar *e)
 {
 	GtkTextIter ti;
 	GtkTextBuffer *b = gtk_text_view_get_buffer(GTK_TEXT_VIEW(w->con));
@@ -985,7 +985,7 @@ static gchar * out(struct wkb *w, gboolean show, gchar *e)
 	return e;
 }
 
-static int parse(struct wkb *w, WebKitWebView *wv, struct list *in_list, gchar **arg)
+static int parse(struct window *w, WebKitWebView *wv, struct list *in_list, gchar **arg)
 {
 	struct list tmp_list = NEW_LIST;
 	struct token *t = NULL, *tp = NULL, *tt = NULL;
@@ -1093,7 +1093,7 @@ static int parse(struct wkb *w, WebKitWebView *wv, struct list *in_list, gchar *
 	return ret;
 }
 
-static void parse_mode_and_mod_mask(struct wkb *w, const gchar *mode_str, const gchar *mod_str, guint *mode, guint *mod, const gchar *n)
+static void parse_mode_and_mod_mask(struct window *w, const gchar *mode_str, const gchar *mod_str, guint *mode, guint *mod, const gchar *n)
 {
 	int i;
 	*mode = *mod = 0;
@@ -1124,7 +1124,7 @@ static void parse_mode_and_mod_mask(struct wkb *w, const gchar *mode_str, const 
 	}
 }
 
-static void print_bind(struct wkb *w, struct bind *b)
+static void print_bind(struct window *w, struct bind *b)
 {
 	gchar str_mode[5], str_mod[8];
 	get_mode_string(b->mode, str_mode);
@@ -1133,7 +1133,7 @@ static void print_bind(struct wkb *w, struct bind *b)
 	else g_free(out(w, TRUE, g_strdup_printf("%s  %s  %-10s  %s %s\n", str_mode, str_mod, b->key, b->handler->name, b->arg)));
 }
 
-static void print_download(struct wkb *w, struct download *dl)
+static void print_download(struct window *w, struct download *dl)
 {
 	gchar *status = "Unknown", *filename = NULL;
 	int width = (global.next_download_id < 11) ? 1 : (int) log10(global.next_download_id - 1) + 1;
@@ -1156,12 +1156,12 @@ static void print_download(struct wkb *w, struct download *dl)
 
 static void quit(void)
 {
-	while (global.windows.h != NULL) gtk_widget_destroy(((struct wkb *) global.windows.h)->w);
+	while (global.windows.h != NULL) gtk_widget_destroy(((struct window *) global.windows.h)->w);
 	if (gtk_main_level() != 0) gtk_main_quit();
 	else exit(0);
 }
 
-static void set_mode(struct wkb *w, guint m)
+static void set_mode(struct window *w, guint m)
 {
 	switch(m) {
 		case MODE_NORMAL: case MODE_INSERT: case MODE_PASSTHROUGH:
@@ -1191,10 +1191,10 @@ static void set_mode(struct wkb *w, guint m)
 	w->mode = m;
 }
 
-static int set_var_value(struct wkb *w, WebKitWebView *wv, struct var *v, const gchar *new_value)
+static int set_var_value(struct window *w, WebKitWebView *wv, struct var *v, const gchar *new_value)
 {
-	if (v->handler != NULL && v->handler->sh != NULL)
-		return v->handler->sh(w, wv, v, new_value);
+	if (v->handler != NULL && v->handler->set != NULL)
+		return v->handler->set(w, wv, v, new_value);
 	g_free(v->value);
 	v->value = g_strdup(new_value);
 	return 0;
@@ -1267,11 +1267,11 @@ static void tokenize_expansion(const gchar *value, struct list *tok)
 	}
 }
 
-static void update_dl_l(struct wkb *w)
+static void update_dl_l(struct window *w)
 {
 	int n_dl = 0;
 	struct download *dl;
-	struct wkb *window;
+	struct window *window;
 	GString *lt = g_string_new("[dl: ");
 	LIST_FOREACH(&global.downloads, dl) {
 		if (DOWNLOAD_IS_ACTIVE(dl->status)) {
@@ -1295,7 +1295,7 @@ static void update_dl_l(struct wkb *w)
 	g_string_free(lt, TRUE);
 }
 
-static void update_tabs_l(struct wkb *w)
+static void update_tabs_l(struct window *w)
 {
 	gchar *str = g_strdup_printf("[%d/%d]", gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), GET_CURRENT_TAB_CHILD(w)) + 1, gtk_notebook_get_n_pages(GTK_NOTEBOOK(w->nb)));
 	gtk_label_set_text(GTK_LABEL(w->tabs_l), str);
@@ -1319,7 +1319,7 @@ static void update_title(struct tab *t)
 	g_free(tab_title);
 }
 
-static void update_uri_l(struct wkb *w, const gchar *l, const gchar *s)
+static void update_uri_l(struct window *w, const gchar *l, const gchar *s)
 {
 	set_current_uri(w, (union wkb_setting) { .s = (gchar *) s });
 	gtk_label_set_text(GTK_LABEL(w->uri_l), l);
@@ -1329,12 +1329,12 @@ static void update_uri_l(struct wkb *w, const gchar *l, const gchar *s)
 
 static void cb_close(WebKitWebView *wv, struct tab *t)
 {
-	struct wkb *w = t->w;
+	struct window *w = t->w;
 	destroy_tab(t);
 	if (w->tabs.h == NULL) new_tab(w, NULL, global.homepage);
 }
 
-static gboolean cb_cmd_fifo_in(GIOChannel *s, GIOCondition c, struct wkb *w)
+static gboolean cb_cmd_fifo_in(GIOChannel *s, GIOCondition c, struct window *w)
 {
 	GError *err = NULL;
 	gchar *line;
@@ -1365,7 +1365,7 @@ static gboolean cb_cmd_fifo_in(GIOChannel *s, GIOCondition c, struct wkb *w)
 	return TRUE;
 }
 
-static void cb_console_size_allocate(WebKitWebView *wv, GdkRectangle *allocation, struct wkb *w)
+static void cb_console_size_allocate(WebKitWebView *wv, GdkRectangle *allocation, struct window *w)
 {
 	GtkAdjustment *va;
 	if (w->auto_scroll) {
@@ -1375,9 +1375,9 @@ static void cb_console_size_allocate(WebKitWebView *wv, GdkRectangle *allocation
 }
 
 #if WEBKIT_CHECK_VERSION(2, 5, 1)
-static GtkWidget * cb_create(WebKitWebView *wv, WebKitNavigationAction *na, struct wkb *w)
+static GtkWidget * cb_create(WebKitWebView *wv, WebKitNavigationAction *na, struct window *w)
 #else
-static GtkWidget * cb_create(WebKitWebView *wv, struct wkb *w)
+static GtkWidget * cb_create(WebKitWebView *wv, struct window *w)
 #endif
 {
 	if (global.allow_popups) return new_tab(w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL);
@@ -1387,7 +1387,7 @@ static GtkWidget * cb_create(WebKitWebView *wv, struct wkb *w)
 	}
 }
 
-static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, WebKitPolicyDecisionType dt, struct wkb *w)
+static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, WebKitPolicyDecisionType dt, struct window *w)
 {
 #if WEBKIT_CHECK_VERSION(2, 6, 0)
 	WebKitNavigationAction *na;
@@ -1400,7 +1400,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 			na = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(d));
 			if (webkit_navigation_action_get_mouse_button(na) == 2) {
 				if (webkit_navigation_action_get_modifiers(na) & GDK_SHIFT_MASK)
-					new_window(g_malloc0(sizeof(struct wkb)), webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
+					new_window(g_malloc0(sizeof(struct window)), webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
 				else
 					new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
 				webkit_policy_decision_ignore(d);
@@ -1410,7 +1410,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 			nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
 			if (webkit_navigation_policy_decision_get_mouse_button(nd) == 2) {
 				if (webkit_navigation_policy_decision_get_modifiers(nd) & GDK_SHIFT_MASK)
-					new_window(g_malloc0(sizeof(struct wkb)), webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
+					new_window(g_malloc0(sizeof(struct window)), webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
 				else
 					new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
 				webkit_policy_decision_ignore(d);
@@ -1437,7 +1437,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 	return FALSE;
 }
 
-static void cb_destroy(WebKitWebView *wv, struct wkb *w)
+static void cb_destroy(WebKitWebView *wv, struct window *w)
 {
 	destroy_cmd_fifo(w);
 	LIST_REMOVE(&global.windows, (struct node *) w);
@@ -1470,19 +1470,19 @@ static void cb_download_finished(WebKitDownload *d, struct download *dl)
 {
 	if (DOWNLOAD_IS_ACTIVE(dl->status)) {
 		dl->status = DOWNLOAD_STATUS_FINISHED;
-		if (dl->auto_open) open_download((struct wkb *)
+		if (dl->auto_open) open_download((struct window *)
 			global.windows.h, NULL, dl, global.dl_open_cmd);  /* FIXME */
 	}
 	update_dl_l(NULL);
 }
 
-static gboolean cb_enter_fullscreen(WebKitWebView *wv, struct wkb *w)
+static gboolean cb_enter_fullscreen(WebKitWebView *wv, struct window *w)
 {
 	fullscreen_mode(w, TRUE);
 	return FALSE;
 }
 
-static void cb_input_end(WebKitWebView *wv, struct wkb *w)
+static void cb_input_end(WebKitWebView *wv, struct window *w)
 {
 	gchar *text = g_strdup(gtk_entry_get_text(GTK_ENTRY(w->i)));
 	set_mode(w, MODE_NORMAL);
@@ -1493,7 +1493,7 @@ static void cb_input_end(WebKitWebView *wv, struct wkb *w)
 	g_free(text);
 }
 
-static gboolean cb_keypress(WebKitWebView *wv, GdkEventKey *ev, struct wkb *w)
+static gboolean cb_keypress(WebKitWebView *wv, GdkEventKey *ev, struct window *w)
 {
 	struct bind *b;
 	gchar str_mod[8];
@@ -1514,13 +1514,13 @@ static gboolean cb_keypress(WebKitWebView *wv, GdkEventKey *ev, struct wkb *w)
 	return TRUE;
 }
 
-static gboolean cb_leave_fullscreen(WebKitWebView *wv, struct wkb *w)
+static gboolean cb_leave_fullscreen(WebKitWebView *wv, struct window *w)
 {
 	fullscreen_mode(w, FALSE);
 	return FALSE;
 }
 
-static void cb_load_changed(WebKitWebView *wv, WebKitLoadEvent e, struct wkb *w)
+static void cb_load_changed(WebKitWebView *wv, WebKitLoadEvent e, struct window *w)
 {
 	switch (e) {
 		case WEBKIT_LOAD_COMMITTED:
@@ -1535,7 +1535,7 @@ static void cb_load_changed(WebKitWebView *wv, WebKitLoadEvent e, struct wkb *w)
 	}
 }
 
-static void cb_mouse_target_changed(WebKitWebView *wv, WebKitHitTestResult *ht, guint mod, struct wkb *w)
+static void cb_mouse_target_changed(WebKitWebView *wv, WebKitHitTestResult *ht, guint mod, struct window *w)
 {
 	gchar *temp;
 	if (webkit_hit_test_result_context_is_link(ht)) {
@@ -1555,7 +1555,7 @@ static void cb_progress_changed(WebKitWebView *wv, GParamSpec *p, struct tab *t)
 	update_title(t);
 }
 
-static void cb_tab_changed(WebKitWebView *wv, GtkWidget *page, guint page_num, struct wkb *w)
+static void cb_tab_changed(WebKitWebView *wv, GtkWidget *page, guint page_num, struct window *w)
 {
 	struct tab *t = NULL;
 	LIST_FOREACH(&w->tabs, t) {
@@ -1582,7 +1582,7 @@ static void cb_uri_changed(WebKitWebView *wv, GParamSpec *p, struct tab *t)
 
 /* Begin bind functions */
 
-static gboolean bind_hist_next(struct wkb *w, struct bind *b)
+static gboolean bind_hist_next(struct window *w, struct bind *b)
 {
 	if (w->current_hist == NULL) return TRUE;
 	w->current_hist = (struct hist *) w->current_hist->n.n;
@@ -1594,7 +1594,7 @@ static gboolean bind_hist_next(struct wkb *w, struct bind *b)
 	return TRUE;
 }
 
-static gboolean bind_hist_prev(struct wkb *w, struct bind *b)
+static gboolean bind_hist_prev(struct window *w, struct bind *b)
 {
 	if (w->current_hist == NULL) {
 		w->current_hist = (struct hist *) global.hist.t;
@@ -1612,12 +1612,12 @@ static gboolean bind_hist_prev(struct wkb *w, struct bind *b)
 	return TRUE;
 }
 
-static gboolean bind_pass(struct wkb *w, struct bind *b)
+static gboolean bind_pass(struct window *w, struct bind *b)
 {
 	return FALSE;
 }
 
-static gboolean bind_run(struct wkb *w, struct bind *b)
+static gboolean bind_run(struct window *w, struct bind *b)
 {
 	exec_line(w, NULL, b->arg);
 	return TRUE;
@@ -1625,7 +1625,7 @@ static gboolean bind_run(struct wkb *w, struct bind *b)
 
 /* Begin command functions */
 
-static int cmd_add_ss(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_add_ss(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	gchar **whitelist, **blacklist;
 	if (argc != 5) {
@@ -1648,7 +1648,7 @@ static int cmd_add_ss(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	return 0;
 }
 
-static int cmd_alias(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_alias(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	gchar *ill;
 	struct alias *a = NULL;
@@ -1681,7 +1681,7 @@ static int cmd_alias(struct wkb *w, WebKitWebView *wv, struct command *c, int ar
 	return 0;
 }
 
-static int cmd_bind(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_bind(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	guint mode = 0, mod = 0;
@@ -1747,19 +1747,19 @@ static int cmd_bind(struct wkb *w, WebKitWebView *wv, struct command *c, int arg
 	return 0;
 }
 
-static int cmd_clear(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_clear(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(w->con)), "", -1);
 	return 0;
 }
 
-static int cmd_clear_cache(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_clear_cache(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	webkit_web_context_clear_cache(webkit_web_view_get_context(wv));
 	return 0;
 }
 
-static int cmd_clear_ss(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_clear_ss(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 #if WEBKIT_CHECK_VERSION(2, 5, 1)
 	webkit_user_content_manager_remove_all_style_sheets(global.cm);
@@ -1769,7 +1769,7 @@ static int cmd_clear_ss(struct wkb *w, WebKitWebView *wv, struct command *c, int
 	return 0;
 }
 
-static int cmd_dl_cancel(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_dl_cancel(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	struct download *dl = NULL;
@@ -1784,7 +1784,7 @@ static int cmd_dl_cancel(struct wkb *w, WebKitWebView *wv, struct command *c, in
 	return 0;
 }
 
-static int cmd_dl_clear(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_dl_clear(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	struct download *dl = NULL;
@@ -1799,7 +1799,7 @@ static int cmd_dl_clear(struct wkb *w, WebKitWebView *wv, struct command *c, int
 	return 0;
 }
 
-static int cmd_dl_new(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_dl_new(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str;
 	gchar *uri;
@@ -1812,7 +1812,7 @@ static int cmd_dl_new(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	return 0;
 }
 
-static int cmd_dl_open(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_dl_open(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	struct download *dl = NULL;
@@ -1830,7 +1830,7 @@ static int cmd_dl_open(struct wkb *w, WebKitWebView *wv, struct command *c, int 
 	return 0;
 }
 
-static int cmd_dl_status(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_dl_status(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	struct download *dl = NULL;
@@ -1845,7 +1845,7 @@ static int cmd_dl_status(struct wkb *w, WebKitWebView *wv, struct command *c, in
 	return 0;
 }
 
-static int cmd_echo(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_echo(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	gboolean show = (argv[0][0] != 'n');
@@ -1855,7 +1855,7 @@ static int cmd_echo(struct wkb *w, WebKitWebView *wv, struct command *c, int arg
 	return 0;
 }
 
-static int cmd_find(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_find(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str;
 	if (argc > 1) {
@@ -1868,7 +1868,7 @@ static int cmd_find(struct wkb *w, WebKitWebView *wv, struct command *c, int arg
 	return 0;
 }
 
-static int cmd_help(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_help(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	if (argc > 2) {
@@ -1896,7 +1896,7 @@ static int cmd_help(struct wkb *w, WebKitWebView *wv, struct command *c, int arg
 	return 0;
 }
 
-static int cmd_js(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_js(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	if (argc < 2) {
 		out(w, TRUE, c->usage);
@@ -1908,7 +1908,7 @@ static int cmd_js(struct wkb *w, WebKitWebView *wv, struct command *c, int argc,
 	return 0;
 }
 
-static int cmd_js_file(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_js_file(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	gchar *contents;
@@ -1931,14 +1931,14 @@ static int cmd_js_file(struct wkb *w, WebKitWebView *wv, struct command *c, int 
 	return 0;
 }
 
-static int cmd_last(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_last(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	if (w->tabs.h->n != NULL)
 		gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), ((struct tab *) w->tabs.h->n)->c));
 	return 0;
 }
 
-static int cmd_loadconfig(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_loadconfig(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	gchar *cf_path, *contents, *start_line, *end_line;
@@ -1972,7 +1972,7 @@ static int cmd_loadconfig(struct wkb *w, WebKitWebView *wv, struct command *c, i
 	return 0;
 }
 
-static int cmd_msg(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_msg(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str = concat_args(argc, argv);
 	if (strlen(str->str) > 0) msg(w, str->str);
@@ -1980,7 +1980,7 @@ static int cmd_msg(struct wkb *w, WebKitWebView *wv, struct command *c, int argc
 	return 0;
 }
 
-static int cmd_nav(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_nav(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	if (argc != 2) {
 		out(w, TRUE, c->usage);
@@ -1990,7 +1990,7 @@ static int cmd_nav(struct wkb *w, WebKitWebView *wv, struct command *c, int argc
 	return 0;
 }
 
-static int cmd_open_input(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_open_input(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str = concat_args(argc, argv), *e;
 	if (argv[0][0] == 'e') {
@@ -2003,7 +2003,7 @@ static int cmd_open_input(struct wkb *w, WebKitWebView *wv, struct command *c, i
 	return 0;
 }
 
-static int cmd_open(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_open(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str;
 	if (argc <= 1) open_uri(wv, global.homepage);
@@ -2015,26 +2015,26 @@ static int cmd_open(struct wkb *w, WebKitWebView *wv, struct command *c, int arg
 	return 0;
 }
 
-static int cmd_print(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_print(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	WebKitPrintOperation *p = webkit_print_operation_new(wv);
 	if (webkit_print_operation_run_dialog(p, GTK_WINDOW(w->w)) == WEBKIT_PRINT_OPERATION_RESPONSE_PRINT) webkit_print_operation_print(p);
 	return 0;
 }
 
-static int cmd_reload(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_reload(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	webkit_web_view_reload(wv);
 	return 0;
 }
 
-static int cmd_reload_nc(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_reload_nc(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	webkit_web_view_reload_bypass_cache(wv);
 	return 0;
 }
 
-static int cmd_reorder(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_reorder(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	struct tab *t;
 	int p, n;
@@ -2062,13 +2062,13 @@ static int cmd_reorder(struct wkb *w, WebKitWebView *wv, struct command *c, int 
 	return 0;
 }
 
-static int cmd_quit(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_quit(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	quit();
 	return 0;
 }
 
-static int cmd_set(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_set(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	gchar *ill, *temp;
 	struct var *v = NULL;
@@ -2115,7 +2115,7 @@ static int cmd_set(struct wkb *w, WebKitWebView *wv, struct command *c, int argc
 	return 0;
 }
 
-static int cmd_set_mode(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_set_mode(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	if (argc != 2) {
 		out(w, TRUE, c->usage);
@@ -2132,7 +2132,7 @@ static int cmd_set_mode(struct wkb *w, WebKitWebView *wv, struct command *c, int
 	return 0;
 }
 
-static int cmd_spawn(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_spawn(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int i;
 	gchar **exec_argv, *standard_out, *standard_error, *start_line, *end_line;
@@ -2178,13 +2178,13 @@ static int cmd_spawn(struct wkb *w, WebKitWebView *wv, struct command *c, int ar
 	return 0;
 }
 
-static int cmd_stop(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_stop(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	webkit_web_view_stop_loading(wv);
 	return 0;
 }
 
-static int cmd_switch(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_switch(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	int n, t;
 	if (argc != 2) {
@@ -2210,7 +2210,7 @@ static int cmd_switch(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	return 0;
 }
 
-static int cmd_tclose(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_tclose(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	destroy_tab((struct tab *) w->tabs.h);
 	if (w->tabs.h == NULL) new_tab(w, NULL, global.homepage);
@@ -2218,7 +2218,7 @@ static int cmd_tclose(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	return 0;
 }
 
-static int cmd_topen(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_topen(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str;
 	if (argc <= 1) new_tab(w, NULL, global.homepage);
@@ -2230,7 +2230,7 @@ static int cmd_topen(struct wkb *w, WebKitWebView *wv, struct command *c, int ar
 	return 0;
 }
 
-static int cmd_unalias(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_unalias(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	struct alias *a;
 	if (argc != 2) {
@@ -2242,7 +2242,7 @@ static int cmd_unalias(struct wkb *w, WebKitWebView *wv, struct command *c, int 
 	return 0;
 }
 
-static int cmd_unbind(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_unbind(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	guint mode = 0, mod = 0;
 	struct bind *b;
@@ -2259,7 +2259,7 @@ static int cmd_unbind(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	return 0;
 }
 
-static int cmd_unset(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_unset(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	struct var *v;
 	if (argc != 2) {
@@ -2274,23 +2274,23 @@ static int cmd_unset(struct wkb *w, WebKitWebView *wv, struct command *c, int ar
 	return 0;
 }
 
-static int cmd_wclose(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_wclose(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	gtk_widget_destroy(w->w);
 	return 0;
 }
 
-static int cmd_window(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_window(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str;
-	struct wkb *wn;
+	struct window *wn;
 	int id;
 	if (argc < 2) {
 		out(w, TRUE, c->usage);
 		return 1;
 	}
-	if (strcmp(argv[1], "first") == 0) wn = (struct wkb *) global.windows.h;
-	else if (strcmp(argv[1], "last") == 0) wn = (struct wkb *) global.windows.t;
+	if (strcmp(argv[1], "first") == 0) wn = (struct window *) global.windows.h;
+	else if (strcmp(argv[1], "last") == 0) wn = (struct window *) global.windows.t;
 	else {
 		id = atoi(argv[1]);
 		LIST_FOREACH(&global.windows, wn) if (wn->id == id) break;
@@ -2305,19 +2305,19 @@ static int cmd_window(struct wkb *w, WebKitWebView *wv, struct command *c, int a
 	return 0;
 }
 
-static int cmd_wopen(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_wopen(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str;
-	if (argc <= 1) new_window(g_malloc0(sizeof(struct wkb)), global.homepage);
+	if (argc <= 1) new_window(g_malloc0(sizeof(struct window)), global.homepage);
 	else {
 		str = concat_args(argc, argv);
-		new_window(g_malloc0(sizeof(struct wkb)), str->str);
+		new_window(g_malloc0(sizeof(struct window)), str->str);
 		g_string_free(str, TRUE);
 	}
 	return 0;
 }
 
-static int cmd_zoom(struct wkb *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+static int cmd_zoom(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	double level;
 	if (argc != 2) {
@@ -2333,7 +2333,7 @@ static int cmd_zoom(struct wkb *w, WebKitWebView *wv, struct command *c, int arg
 
 /* Begin set/get/init handler functions */
 
-static gchar * get_handler_gobject(struct wkb *w, WebKitWebView *wv, struct var *v, int context)
+static gchar * get_handler_gobject(struct window *w, WebKitWebView *wv, struct var *v, int context)
 {
 	gboolean bval;
 	gint ival;
@@ -2383,7 +2383,7 @@ static gchar * get_handler_gobject(struct wkb *w, WebKitWebView *wv, struct var 
 	return NULL;
 }
 
-static gchar * get_handler_wkb(struct wkb *w, WebKitWebView *wv, struct var *v, int context)
+static gchar * get_handler_wkb(struct window *w, WebKitWebView *wv, struct var *v, int context)
 {
 	struct default_wkb_setting *s = get_wkb_setting(w, v->name);
 	if (s == NULL) {
@@ -2406,20 +2406,20 @@ static gchar * get_handler_wkb(struct wkb *w, WebKitWebView *wv, struct var *v, 
 	return NULL;
 }
 
-static void init_handler_gobject(struct wkb *w, WebKitWebView *wv, struct var_handler *vh)
+static void init_handler_gobject(struct window *w, WebKitWebView *wv, struct var_handler *vh)
 {
 	add_gobject_properties(w, vh, G_OBJECT(wv), VAR_PREFIX_WEBKIT_WEB_VIEW"%s");
 	add_gobject_properties(w, vh, G_OBJECT(webkit_web_view_get_settings(wv)), VAR_PREFIX_WEBKIT_SETTINGS"%s");
 }
 
-static void init_handler_wkb(struct wkb *w, WebKitWebView *wv, struct var_handler *vh)
+static void init_handler_wkb(struct window *w, WebKitWebView *wv, struct var_handler *vh)
 {
 	int i;
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
 		new_var(w, default_wkb_settings[i].name, 0)->handler = vh;
 }
 
-static int set_handler_gobject(struct wkb *w, WebKitWebView *wv, struct var *v, const gchar *new_value)
+static int set_handler_gobject(struct window *w, WebKitWebView *wv, struct var *v, const gchar *new_value)
 {
 	GParamSpec *ps;
 	GObject *obj;
@@ -2464,7 +2464,7 @@ static int set_handler_gobject(struct wkb *w, WebKitWebView *wv, struct var *v, 
 	return 0;
 }
 
-static int set_handler_wkb(struct wkb *w, WebKitWebView *wv, struct var *v, const gchar *new_value)
+static int set_handler_wkb(struct window *w, WebKitWebView *wv, struct var *v, const gchar *new_value)
 {
 	struct default_wkb_setting *s = get_wkb_setting(w, v->name);
 	if (s == NULL) {
@@ -2499,33 +2499,33 @@ static int set_handler_wkb(struct wkb *w, WebKitWebView *wv, struct var *v, cons
 
 /* Begin wkb setting accessor/mutator functions */
 
-static union wkb_setting get_webkit_api(struct wkb *w, int context)
+static union wkb_setting get_webkit_api(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = WKB_WEBKIT_API };
 }
 
-static union wkb_setting get_cmd_fifo(struct wkb *w, int context)
+static union wkb_setting get_cmd_fifo(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = w->cmd_fifo };
 }
 
-static union wkb_setting get_config_dir(struct wkb *w, int context)
+static union wkb_setting get_config_dir(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.config_dir };
 }
 
-static void set_config_dir(struct wkb *w, union wkb_setting v)
+static void set_config_dir(struct window *w, union wkb_setting v)
 {
 	g_free(global.config_dir);
 	global.config_dir = g_strdup(v.s);
 }
 
-static union wkb_setting get_cookie_file(struct wkb *w, int context)
+static union wkb_setting get_cookie_file(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.cookie_file };
 }
 
-static void set_cookie_file(struct wkb *w, union wkb_setting v)
+static void set_cookie_file(struct window *w, union wkb_setting v)
 {
 	gchar *tmp = g_strdup(global.cookie_policy);
 	g_free(global.cookie_file);
@@ -2535,12 +2535,12 @@ static void set_cookie_file(struct wkb *w, union wkb_setting v)
 	g_free(tmp);
 }
 
-static union wkb_setting get_cookie_policy(struct wkb *w, int context)
+static union wkb_setting get_cookie_policy(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.cookie_policy };
 }
 
-static void set_cookie_policy(struct wkb *w, union wkb_setting v)
+static void set_cookie_policy(struct window *w, union wkb_setting v)
 {
 	WebKitCookieManager *cm = webkit_web_context_get_cookie_manager(webkit_web_view_get_context(GET_CURRENT_VIEW(w)));
 	if (v.s == NULL) return;
@@ -2558,44 +2558,44 @@ static void set_cookie_policy(struct wkb *w, union wkb_setting v)
 	global.cookie_policy = g_strdup(v.s);
 }
 
-static union wkb_setting get_auto_scroll(struct wkb *w, int context)
+static union wkb_setting get_auto_scroll(struct window *w, int context)
 {
 	return (union wkb_setting) { .b = w->auto_scroll };
 }
 
-static void set_auto_scroll(struct wkb *w, union wkb_setting v)
+static void set_auto_scroll(struct window *w, union wkb_setting v)
 {
 	w->auto_scroll = v.b;
 }
 
-static union wkb_setting get_show_console(struct wkb *w, int context)
+static union wkb_setting get_show_console(struct window *w, int context)
 {
 	return (union wkb_setting) { .b = w->show_console };
 }
 
-static void set_show_console(struct wkb *w, union wkb_setting v)
+static void set_show_console(struct window *w, union wkb_setting v)
 {
 	if (v.b) gtk_widget_show(w->consw);
 	else gtk_widget_hide(w->consw);
 	w->show_console = v.b;
 }
 
-static union wkb_setting get_print_keyval(struct wkb *w, int context)
+static union wkb_setting get_print_keyval(struct window *w, int context)
 {
 	return (union wkb_setting) { .b = w->print_keyval };
 }
 
-static void set_print_keyval(struct wkb *w, union wkb_setting v)
+static void set_print_keyval(struct window *w, union wkb_setting v)
 {
 	w->print_keyval = v.b;
 }
 
-static union wkb_setting get_fullscreen(struct wkb *w, int context)
+static union wkb_setting get_fullscreen(struct window *w, int context)
 {
 	return (union wkb_setting) { .b = w->fullscreen };
 }
 
-static void set_fullscreen(struct wkb *w, union wkb_setting v)
+static void set_fullscreen(struct window *w, union wkb_setting v)
 {
 	/* apparently calling gtk_window_unfullscreen() when the window isn't fullscreened causes some problems... */
 	if (v.b == w->fullscreen) return;
@@ -2604,74 +2604,74 @@ static void set_fullscreen(struct wkb *w, union wkb_setting v)
 	else gtk_window_unfullscreen(GTK_WINDOW(w->w));
 }
 
-static union wkb_setting get_allow_popups(struct wkb *w, int context)
+static union wkb_setting get_allow_popups(struct window *w, int context)
 {
 	return (union wkb_setting) { .b = global.allow_popups };
 }
 
-static void set_allow_popups(struct wkb *w, union wkb_setting v)
+static void set_allow_popups(struct window *w, union wkb_setting v)
 {
 	global.allow_popups = v.b;
 }
 
-static union wkb_setting get_download_dir(struct wkb *w, int context)
+static union wkb_setting get_download_dir(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.download_dir };
 }
 
-static void set_download_dir(struct wkb *w, union wkb_setting v)
+static void set_download_dir(struct window *w, union wkb_setting v)
 {
 	g_free(global.download_dir);
 	global.download_dir = g_strdup(v.s);
 }
 
-static union wkb_setting get_dl_open_cmd(struct wkb *w, int context)
+static union wkb_setting get_dl_open_cmd(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.dl_open_cmd };
 }
 
-static void set_dl_open_cmd(struct wkb *w, union wkb_setting v)
+static void set_dl_open_cmd(struct window *w, union wkb_setting v)
 {
 	g_free(global.dl_open_cmd);
 	global.dl_open_cmd = g_strdup(v.s);
 }
 
-static union wkb_setting get_dl_auto_open(struct wkb *w, int context)
+static union wkb_setting get_dl_auto_open(struct window *w, int context)
 {
 	return (union wkb_setting) { .b = global.dl_auto_open };
 }
 
-static void set_dl_auto_open(struct wkb *w, union wkb_setting v)
+static void set_dl_auto_open(struct window *w, union wkb_setting v)
 {
 	global.dl_auto_open = v.b;
 }
 
-static union wkb_setting get_default_width(struct wkb *w, int context)
+static union wkb_setting get_default_width(struct window *w, int context)
 {
 	return (union wkb_setting) { .i = global.default_width };
 }
 
-static void set_default_width(struct wkb *w, union wkb_setting v)
+static void set_default_width(struct window *w, union wkb_setting v)
 {
 	global.default_width = (v.i > 0) ? v.i : 1;
 }
 
-static union wkb_setting get_default_height(struct wkb *w, int context)
+static union wkb_setting get_default_height(struct window *w, int context)
 {
 	return (union wkb_setting) { .i = global.default_height };
 }
 
-static void set_default_height(struct wkb *w, union wkb_setting v)
+static void set_default_height(struct window *w, union wkb_setting v)
 {
 	global.default_height = (v.i > 0) ? v.i : 1;
 }
 
-static union wkb_setting get_spell_langs(struct wkb *w, int context)
+static union wkb_setting get_spell_langs(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.spell_langs };
 }
 
-static void set_spell_langs(struct wkb *w, union wkb_setting v)
+static void set_spell_langs(struct window *w, union wkb_setting v)
 {
 	g_free(global.spell_langs);
 	global.spell_langs = g_strdup(v.s);
@@ -2680,60 +2680,60 @@ static void set_spell_langs(struct wkb *w, union wkb_setting v)
 	g_strfreev(langs);
 }
 
-static union wkb_setting get_spell(struct wkb *w, int context)
+static union wkb_setting get_spell(struct window *w, int context)
 {
 	return (union wkb_setting) { .b = webkit_web_context_get_spell_checking_enabled(webkit_web_view_get_context(GET_CURRENT_VIEW(w))) };
 }
 
-static void set_spell(struct wkb *w, union wkb_setting v)
+static void set_spell(struct window *w, union wkb_setting v)
 {
 	webkit_web_context_set_spell_checking_enabled(webkit_web_view_get_context(GET_CURRENT_VIEW(w)), v.b);
 }
 
-static union wkb_setting get_tls_errors(struct wkb *w, int context)
+static union wkb_setting get_tls_errors(struct window *w, int context)
 {
 	return (union wkb_setting) { .b = (webkit_web_context_get_tls_errors_policy(webkit_web_view_get_context(GET_CURRENT_VIEW(w))) == WEBKIT_TLS_ERRORS_POLICY_FAIL) };
 }
 
-static void set_tls_errors(struct wkb *w, union wkb_setting v)
+static void set_tls_errors(struct window *w, union wkb_setting v)
 {
 	webkit_web_context_set_tls_errors_policy(webkit_web_view_get_context(GET_CURRENT_VIEW(w)), (v.b) ? WEBKIT_TLS_ERRORS_POLICY_FAIL : WEBKIT_TLS_ERRORS_POLICY_IGNORE);
 }
 
-static union wkb_setting get_find_string(struct wkb *w, int context)
+static union wkb_setting get_find_string(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = w->find_string };
 }
 
-static void set_find_string(struct wkb *w, union wkb_setting v)
+static void set_find_string(struct window *w, union wkb_setting v)
 {
 	g_free(w->find_string);
 	w->find_string = g_strdup(v.s);
 }
 
-static union wkb_setting get_homepage(struct wkb *w, int context)
+static union wkb_setting get_homepage(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.homepage };
 }
 
-static void set_homepage(struct wkb *w, union wkb_setting v)
+static void set_homepage(struct window *w, union wkb_setting v)
 {
 	g_free(global.homepage);
 	global.homepage = g_strdup(v.s);
 }
 
-static union wkb_setting get_current_uri(struct wkb *w, int context)
+static union wkb_setting get_current_uri(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = w->current_uri };
 }
 
-static void set_current_uri(struct wkb *w, union wkb_setting v)
+static void set_current_uri(struct window *w, union wkb_setting v)
 {
 	g_free(w->current_uri);
 	w->current_uri = g_strdup(v.s);
 }
 
-static union wkb_setting get_fc_dir(struct wkb *w, int context)
+static union wkb_setting get_fc_dir(struct window *w, int context)
 {
 	GtkWidget *dialog;
 	if (context != WKB_VAR_CONTEXT_EXPAND) return (union wkb_setting) { .s = NULL };
@@ -2748,7 +2748,7 @@ static union wkb_setting get_fc_dir(struct wkb *w, int context)
 	return (union wkb_setting) { .s = NULL };
 }
 
-static union wkb_setting get_fc_file(struct wkb *w, int context)
+static union wkb_setting get_fc_file(struct window *w, int context)
 {
 	GtkWidget *dialog;
 	if (context != WKB_VAR_CONTEXT_EXPAND) return (union wkb_setting) { .s = NULL };
@@ -2763,58 +2763,58 @@ static union wkb_setting get_fc_file(struct wkb *w, int context)
 	return (union wkb_setting) { .s = NULL };
 }
 
-static union wkb_setting get_clipboard_text(struct wkb *w, int context)
+static union wkb_setting get_clipboard_text(struct window *w, int context)
 {
 	g_free(global.clipboard_tmp);
 	global.clipboard_tmp = gtk_clipboard_wait_for_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD));
 	return (union wkb_setting) { .s = global.clipboard_tmp };
 }
 
-static void set_clipboard_text(struct wkb *w, union wkb_setting v)
+static void set_clipboard_text(struct window *w, union wkb_setting v)
 {
 	if (v.s != NULL)
 		gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), v.s, -1);
 }
 
-static union wkb_setting get_load_started(struct wkb *w, int context)
+static union wkb_setting get_load_started(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.load_started };
 }
 
-static void set_load_started(struct wkb *w, union wkb_setting v)
+static void set_load_started(struct window *w, union wkb_setting v)
 {
 	g_free(global.load_started);
 	global.load_started = g_strdup(v.s);
 }
 
-static union wkb_setting get_dom_ready(struct wkb *w, int context)
+static union wkb_setting get_dom_ready(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.dom_ready };
 }
 
-static void set_dom_ready(struct wkb *w, union wkb_setting v)
+static void set_dom_ready(struct window *w, union wkb_setting v)
 {
 	g_free(global.dom_ready);
 	global.dom_ready = g_strdup(v.s);
 }
 
-static union wkb_setting get_load_finished(struct wkb *w, int context)
+static union wkb_setting get_load_finished(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.load_finished };
 }
 
-static void set_load_finished(struct wkb *w, union wkb_setting v)
+static void set_load_finished(struct window *w, union wkb_setting v)
 {
 	g_free(global.load_finished);
 	global.load_finished = g_strdup(v.s);
 }
 
-static union wkb_setting get_create(struct wkb *w, int context)
+static union wkb_setting get_create(struct window *w, int context)
 {
 	return (union wkb_setting) { .s = global.create };
 }
 
-static void set_create(struct wkb *w, union wkb_setting v)
+static void set_create(struct window *w, union wkb_setting v)
 {
 	g_free(global.create);
 	global.create = g_strdup(v.s);
@@ -2823,7 +2823,7 @@ static void set_create(struct wkb *w, union wkb_setting v)
 int main(int argc, char *argv[])
 {
 	int i;
-	struct wkb *w;
+	struct window *w;
 	GString *str;
 	memset(&global, 0, sizeof(global));
 	gtk_init(NULL, NULL);
@@ -2839,7 +2839,7 @@ int main(int argc, char *argv[])
 	g_signal_connect(webkit_web_context_get_default(), "download-started", G_CALLBACK(cb_download), NULL);
 	global.default_width = DEFAULT_WIDTH;
 	global.default_height = DEFAULT_HEIGHT;
-	w = new_window(g_malloc0(sizeof(struct wkb)), NULL);
+	w = new_window(g_malloc0(sizeof(struct window)), NULL);
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
 		if (default_wkb_settings[i].scope == WKB_SETTING_SCOPE_GLOBAL && default_wkb_settings[i].set != NULL)
 			default_wkb_settings[i].set(w, default_wkb_settings[i].default_value);
