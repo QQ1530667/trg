@@ -6,7 +6,7 @@ if ! [ -n "$1" -a -n "$2" ]; then
 	exit 1
 fi
 if ! [ -f "$1" ]; then
-	echo '<html><head><meta http-equiv="Content-Type" content="text/html;charset=utf-8"><title>Bookmarks</title><style type="text/css">body { background-color:#fff; color:#444; font-size:10pt; font-family:Verdana; margin:0 auto 0 auto; padding:2em; word-wrap:break-word; max-width:60em; } a { color:#444; text-decoration:none; font-weight:bold; } p { padding:0.3em 0 0.3em 0; } .uri { color:#999; font-size:80%; margin:1em; } .comment { font-size:80%; margin:1em; }</style></head><body>' > "$1"
+	echo '<html><head><meta http-equiv="Content-Type" content="text/html;charset=utf-8"><title>Bookmarks</title><style type="text/css">body { background-color:#fff; color:#444; font-size:10pt; font-family:Verdana; margin:0 auto; padding:2em; word-wrap:break-word; max-width:60em; } a { color:#444; text-decoration:none; font-weight:bold; } p { padding:0.4em 0; } .uri { color:#999; font-size:80%; } .comment { font-size:80%; }</style></head><body>' > "$1"
 	echo '</body>' >> "$1"
 fi
 uri="$2"

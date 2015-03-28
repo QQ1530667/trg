@@ -1,3 +1,7 @@
+# Set default size
+set wkb.default-width 1280
+set wkb.default-height 800
+
 # Aliases
 alias pl "nset s.enable-plugins"
 alias pc "nset s.enable-page-cache"
@@ -10,6 +14,9 @@ alias ds dl-status
 alias dd "nset wkb.download-dir \"\{file-chooser.dir:wkb.download-dir}\""
 alias rc "loadconfig config"
 alias priv "cf \"\"; nset s.enable-private-browsing t; nset s.enable-dns-prefetching f"
+alias ff "spawn firefox \"\{uri}\""
+alias n "spawn wkb open \"\{uri}\""
+alias np "spawn wkb priv\\; open \"\{uri}\""
 alias sc "nset s.enable-javascript"
 alias zt "nset s.zoom-text-only"
 alias ja "nset s.enable-java"
@@ -23,8 +30,7 @@ nset s.default-monospace-font-size 12
 nset s.minimum-font-size 8
 nset s.enable-developer-extras t
 nset s.enable-java f
-#nset s.enable-write-console-messages-to-stdout t
-#nset s.enable-accelerated-2d-canvas t
+nset s.enable-accelerated-2d-canvas t
 nset s.default-monospace-font-size 12
 nset s.minimum-font-size 8
 nset wkb.spellcheck-langs en_US,en_GB
@@ -33,6 +39,11 @@ nset wkb.allow-popups f
 nset wkb.auto-open-downloads t
 set term xterm
 set editor vim
+
+# Stylesheets
+clear-ss
+add-ss "@import url('file://{wkb.config-dir}/css/base.css');" "" "" ""
+#add-ss "@import url('file://{wkb.config-dir}/css/adblock.css');" "" "" ""
 
 # Clear hooks
 nset hook.load-started ""
@@ -45,7 +56,8 @@ spawn-sync "{wkb.config-dir}/load_plugins.sh"
 
 # Binds
 bind nci c p run "print"
-bind n - M run "spawn \{term} -e mpv \{uri}"
+bind n - M run "spawn \{term} -e mpv \"\{uri}\""
 bind nci 1 b run "open bm"
 bind nci 1 B run "topen bm"
 bind nci 1 c run "spawn \{term} -e dash -c \"cat > \{wkb.cmd-fifo}\""
+bind n - C run "spawn dash -c \"echo -n \\\"\{uri}\\\" | xclip\""
