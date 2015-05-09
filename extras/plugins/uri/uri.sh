@@ -12,10 +12,10 @@ case "$STRIPPED_URI" in
 	*.torrent|magnet:*)
 		transmission-remote -a "$URI"
 		;;
-	http://imgur.com/a/*|http://www.imgur.com/a/*)
+	*://imgur.com/a/*|*://www.imgur.com/a/*)
 		curl -s "$STRIPPED_URI/embed" | grep '<img id="thumb-' | sed 's@.*<img id="thumb-\([^"]*\)".*@http://i.imgur.com/\1.jpg@' | xargs feh
 		;;
-	http://imgur.com/*|http://www.imgur.com/*)
+	*://imgur.com/*|*://www.imgur.com/*)
 		feh "http://i.imgur.com/$(basename "$URI").jpg"
 		;;
 	*.png|*.jpg|*.jpeg|*.bmp|*.gif|*.tif|*.tiff)

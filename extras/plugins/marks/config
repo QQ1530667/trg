@@ -1,4 +1,4 @@
-set marks.base "{wkb.config-dir}/plugins/marks"
+set marks.base "{wkb.plugins-dir}/marks"
 set marks.file "{marks.base}/marks.txt"
 alias open "spawn-sync \"{marks.base}/open.sh\" \"{marks.file}\" !open"
 alias topen "spawn-sync \"{marks.base}/open.sh\" \"{marks.file}\" !topen"

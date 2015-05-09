@@ -15,44 +15,20 @@ alias dd "nset wkb.download-dir \"\{file-chooser.dir:wkb.download-dir}\""
 alias rc "loadconfig config"
 alias priv "cf \"\"; nset s.enable-private-browsing t; nset s.enable-dns-prefetching f"
 alias ff "spawn firefox \"\{uri}\""
+alias cr "spawn google-chrome-unstable \"\{uri}\""
+alias links "spawn \{term} -e links \"\{uri}\""
 alias n "spawn wkb open \"\{uri}\""
 alias np "spawn wkb priv\\; open \"\{uri}\""
-alias sc "nset s.enable-javascript"
-alias zt "nset s.zoom-text-only"
-alias ja "nset s.enable-java"
-alias te "nset wkb.tls-errors"
 
 # Settings
 nset s.enable-plugins f
 nset s.enable-offline-web-application-cache f
 nset s.monospace-font-family Monospace
-nset s.default-monospace-font-size 12
-nset s.minimum-font-size 8
 nset s.enable-developer-extras t
-nset s.enable-java f
-nset s.enable-accelerated-2d-canvas t
-nset s.default-monospace-font-size 12
-nset s.minimum-font-size 8
-nset wkb.spellcheck-langs en_US,en_GB
-nset wkb.spellcheck t
 nset wkb.allow-popups f
 nset wkb.auto-open-downloads t
 set term xterm
 set editor vim
-
-# Stylesheets
-clear-ss
-add-ss "@import url('file://{wkb.config-dir}/css/base.css');" "" "" ""
-#add-ss "@import url('file://{wkb.config-dir}/css/adblock.css');" "" "" ""
-
-# Clear hooks
-nset hook.load-started ""
-nset hook.dom-ready ""
-nset hook.load-finished ""
-nset hook.create ""
-
-# Load plugins
-spawn-sync "{wkb.config-dir}/load_plugins.sh"
 
 # Binds
 bind nci c p run "print"
@@ -61,3 +37,16 @@ bind nci 1 b run "open bm"
 bind nci 1 B run "topen bm"
 bind nci 1 c run "spawn \{term} -e dash -c \"cat > \{wkb.cmd-fifo}\""
 bind n - C run "spawn dash -c \"echo -n \\\"\{uri}\\\" | xclip\""
+
+# Clear hooks
+nset hook.load-started ""
+nset hook.dom-ready ""
+nset hook.load-finished ""
+nset hook.create ""
+
+# Load webkit1/webkit2 specific config
+spawn-sync "{wkb.config-dir}/load_config.sh" {wkb.webkit-api}
+
+# Load plugins
+set wkb.plugins-dir "{wkb.config-dir}/plugins"
+spawn-sync "{wkb.config-dir}/load_plugins.sh"

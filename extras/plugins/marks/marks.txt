@@ -1,0 +1,8 @@
+lf file://{file-chooser.file}
+np "data:text/html, <html contenteditable><head><title>Notepad</title><style>body \{ font-size: 8pt; color: #444; background-color: #fff; \}</style></head><body><script>document.body.focus()</script></body></html>"
+bm file://{bookmark.file}
+gdv https://docs.google.com/viewer?url={uri}
+gc https://webcache.googleusercontent.com/search?q=cache:{uri}
+gt https://translate.google.com/
+g https://google.com
+d https://duckduckgo.com/

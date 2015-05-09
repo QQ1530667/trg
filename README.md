@@ -6,12 +6,33 @@ Wkb is a modal web browser utilizing WebKitGTK.
 
 #### Dependencies:
 
-* webkit2gtk
-* dash (for scripts in the example configuration)
+* webkit2gtk or webkitgtk
+
+#### Full dependency list for example configuration:
+
+* dash
+* awk
+* sed (needs support for `-i` flag)
+* grep
+* xterm (or other terminal)
+* vim (or other editor)
+* feh
+* curl
+* mupdf
+* libreoffice
+* transmission-cli
 
 #### Build with gtk3 and webkit2:
 
 	$ ./build.sh
+
+#### Build with gtk3 and webkit1:
+
+	$ ./build.sh --with-webkit1
+
+#### Build with gtk2 and webkit1:
+
+	$ ./build.sh --with-gtk2 --with-webkit1
 
 ### Usage:
 
@@ -75,10 +96,18 @@ Wkb reads `$XDG_CONFIG_HOME/wkb/config` on startup. See `extras/` for an example
 
 ### Theming:
 
-Theming is done via the normal gtk configuration files (`$XDG_CONFIG_HOME/gtk-3.0/gtk.css` for gtk3). Fonts are not assigned in the code, so the minimal themes are required for correct console output.
+Theming is done via the normal gtk configuration files (`$XDG_CONFIG_HOME/gtk-3.0/gtk.css` for gtk3 or `$HOME/.gtkrc-2.0` for gtk2). Fonts are not assigned in the code, so the minimal themes are required for correct console output.
 
 #### Minimal theme for gtk3:
 
 	#wkb-console {
 		font: Monospace 8;
 	}
+
+#### Minimal theme for gtk2:
+
+	style "style-wkb-console"
+	{
+		font_name = "Monospace 8"
+	}
+	widget "wkb.GtkVBox.wkb-console-sw.wkb-console" style "style-wkb-console"
