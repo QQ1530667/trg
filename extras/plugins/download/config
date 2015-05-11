@@ -1,3 +1,3 @@
 set download.base "{wkb.plugins-dir}/download"
-nset wkb.download-open "spawn \"{download.base}/download_open.sh\" \"\{wkb.cmd-fifo}\" \"%f\""
+nset wkb.download-open "spawn \"{download.base}/download_open.sh\" \"\{wkb.cmd-fifo}\" \"\{term}\" \"%f\""
 unset download.base
