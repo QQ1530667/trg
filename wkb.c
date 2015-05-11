@@ -1609,7 +1609,10 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 static GtkWidget * cb_create(WebKitWebView *wv, WebKitWebFrame *f, struct window *w)
 {
 	if (global.allow_popups) return new_tab(w, NULL, NULL);
-	else return NULL;
+	else {
+		msg(w, "cb_create(): blocked");
+		return NULL;
+	}
 }
 
 static gboolean cb_decide_mime(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, gchar *mime, WebKitWebPolicyDecision *d, struct window *w)
