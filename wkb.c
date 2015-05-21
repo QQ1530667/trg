@@ -1508,16 +1508,23 @@ static gboolean cb_cmd_fifo_in(GIOChannel *s, GIOCondition c, struct window *w)
 	gchar *line;
 	gsize t;
 	int fd;
-	if (c & G_IO_IN) {
-		if (g_io_channel_read_line(s, &line, NULL, &t, &err) != G_IO_STATUS_NORMAL) {
+	if (c & (G_IO_IN|G_IO_PRI)) {
+		switch (g_io_channel_read_line(s, &line, NULL, &t, &err)) {
+		case G_IO_STATUS_ERROR:
+		case G_IO_STATUS_AGAIN:
 			g_error_free(err);
 			return TRUE;
+		case G_IO_STATUS_EOF:
+			goto reopen_fifo;
+		case G_IO_STATUS_NORMAL:
+		default:
+			line[t] = '\0';
+			exec_line(w, NULL, line);
+			g_free(line);
 		}
-		line[t] = '\0';
-		exec_line(w, NULL, line);
-		g_free(line);
 	}
-	else if (c & G_IO_HUP) {
+	else if (c & (G_IO_HUP|G_IO_ERR|G_IO_NVAL)) {
+		reopen_fifo:
 		g_source_remove(w->cmd_fifo_ioch_sid);
 		g_io_channel_shutdown(w->cmd_fifo_ioch, FALSE, NULL);
 		close(g_io_channel_unix_get_fd(w->cmd_fifo_ioch));
