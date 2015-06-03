@@ -205,7 +205,7 @@ static gchar * get_mod_string(guint, gchar [8]);
 static gchar * get_mode_string(guint, gchar [5]);
 static struct var * get_var(struct window *, const gchar *);
 static GObject * get_var_gobject(struct window *, WebKitWebView *, struct var *, gchar **);
-static gchar * get_var_value(struct window *, WebKitWebView *, struct var *, int context);
+static gchar * get_var_value(struct window *, WebKitWebView *, struct var *, int);
 static struct default_wkb_setting * get_wkb_setting(struct window *, const gchar *);
 static void init_cmd_fifo(struct window *);
 static int modmask_compare(guint, guint);
@@ -264,11 +264,15 @@ static void cb_destroy(WebKitWebView *, struct window *);
 	static gboolean cb_download_decide_destination(WebKitDownload *, gchar *, void *);
 	static void cb_download_failed(WebKitDownload *, GError *, struct download *);
 	static void cb_download_finished(WebKitDownload *, struct download *);
+#else
+	static void cb_document_load_finished(WebKitWebView *, WebKitWebFrame *, struct window *);
+	static gboolean cb_download(WebKitWebView *, WebKitDownload *, struct window *);
+	static void cb_download_status_changed(WebKitDownload *, GParamSpec *, struct download *);
+#endif
+static void cb_download_progress_changed(WebKitDownload *, GParamSpec *, struct download *);
+#ifdef __HAVE_WEBKIT2__
 	static gboolean cb_enter_fullscreen(WebKitWebView *, struct window *);
 #else
-	static gboolean cb_download(WebKitWebView *, WebKitDownload *, struct window *);
-	static void cb_download_status_changed(WebKitDownload *, GParamSpec *p, struct download *);
-	static void cb_document_load_finished(WebKitWebView *, WebKitWebFrame *, struct window *);
 	static gboolean cb_enter_fullscreen(WebKitWebView *, WebKitDOMHTMLElement *, struct window *);
 #endif
 static void cb_input_end(WebKitWebView *, struct window *);
@@ -849,11 +853,13 @@ static struct download * new_download(WebKitDownload *d, const gchar *filename)
 		webkit_download_set_destination(d, file_uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(dialog)));
 		g_signal_connect(d, "failed", G_CALLBACK(cb_download_failed), dl);
 		g_signal_connect(d, "finished", G_CALLBACK(cb_download_finished), dl);
+		g_signal_connect(d, "notify::estimated-progress", G_CALLBACK(cb_download_progress_changed), dl);
 		g_object_ref(G_OBJECT(d));
 #else
 		dl->status = webkit_download_get_status(d);
 		webkit_download_set_destination_uri(d, file_uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(dialog)));
 		g_signal_connect(d, "notify::status", G_CALLBACK(cb_download_status_changed), dl);
+		g_signal_connect(d, "notify::progress", G_CALLBACK(cb_download_progress_changed), dl);
 #endif
 		g_free(file_uri);
 		gtk_widget_destroy(dialog);
@@ -1286,7 +1292,7 @@ static void print_download(struct window *w, struct download *dl)
 	g_free(out(w, TRUE, g_strdup_printf("[%*d] %s\n%*s   %s %ld/%ld (%d%%) %.2lfs/%.2lfs %.2lfKiB/s\n", width, dl->id,
 		filename, width, "", status, (long int) webkit_download_get_received_data_length(dl->d),
 		(long int) webkit_uri_response_get_content_length(webkit_download_get_response(dl->d)),
-		(int) (webkit_download_get_estimated_progress(dl->d) * 100), webkit_download_get_elapsed_time(dl->d),
+		(int) lround(webkit_download_get_estimated_progress(dl->d) * 100), webkit_download_get_elapsed_time(dl->d),
 		(webkit_download_get_estimated_progress(dl->d) == 0) ? INFINITY : webkit_download_get_elapsed_time(dl->d) / webkit_download_get_estimated_progress(dl->d),
 		(webkit_download_get_elapsed_time(dl->d) == 0) ? 0 : (webkit_download_get_received_data_length(dl->d) / 1024) / webkit_download_get_elapsed_time(dl->d))));
 #else
@@ -1300,7 +1306,7 @@ static void print_download(struct window *w, struct download *dl)
 	filename = g_filename_from_uri(webkit_download_get_destination_uri(dl->d), NULL, NULL);
 	g_free(out(w, TRUE, g_strdup_printf("[%*d] %s\n%*s   %s %ld/%ld (%d%%) %.2lfs/%.2lfs %.2lfKiB/s\n", width, dl->id,
 		filename, width, "", status, (long int) webkit_download_get_current_size(dl->d),
-		(long int) webkit_download_get_total_size(dl->d), (int) (webkit_download_get_progress(dl->d) * 100), webkit_download_get_elapsed_time(dl->d),
+		(long int) webkit_download_get_total_size(dl->d), (int) lround(webkit_download_get_progress(dl->d) * 100), webkit_download_get_elapsed_time(dl->d),
 		(webkit_download_get_progress(dl->d) == 0) ? INFINITY : webkit_download_get_elapsed_time(dl->d) / webkit_download_get_progress(dl->d),
 		(webkit_download_get_elapsed_time(dl->d) == 0) ? 0 : (webkit_download_get_current_size(dl->d) / 1024) / webkit_download_get_elapsed_time(dl->d))));
 #endif
@@ -1429,7 +1435,12 @@ static void update_dl_l(struct window *w)
 	LIST_FOREACH(&global.downloads, dl) {
 		if (DOWNLOAD_IS_ACTIVE(dl->status)) {
 			++n_dl;
-			g_string_append_printf(lt, "%s%d", (n_dl > 1) ? "," : "", dl->id);
+			g_string_append_printf(lt, "%s%d:%d%%", (n_dl > 1) ? "," : "", dl->id,
+#ifdef __HAVE_WEBKIT2__
+				(int) lround(webkit_download_get_estimated_progress(dl->d) * 100));
+#else
+				(int) lround(webkit_download_get_progress(dl->d) * 100));
+#endif
 		}
 	}
 	g_string_append(lt, "]");
@@ -1470,7 +1481,7 @@ static void update_title(struct tab *t)
 	if (progress == 0.0 || progress == 1.0)
 		tab_title = g_strdup_printf("%d  %s", gtk_notebook_page_num(GTK_NOTEBOOK(t->w->nb), t->c) + 1, title);
 	else
-		tab_title = g_strdup_printf("%d  [%d%%] %s", gtk_notebook_page_num(GTK_NOTEBOOK(t->w->nb), t->c) + 1, (int) (progress * 100), title);
+		tab_title = g_strdup_printf("%d  [%d%%] %s", gtk_notebook_page_num(GTK_NOTEBOOK(t->w->nb), t->c) + 1, (int) lround(progress * 100), title);
 	gtk_label_set_text(GTK_LABEL(gtk_notebook_get_tab_label(GTK_NOTEBOOK(t->w->nb), t->c)), tab_title);
 	if (wv == GET_CURRENT_VIEW(t->w)) gtk_window_set_title(GTK_WINDOW(t->w->w), title);
 	g_free(tab_title);
@@ -1692,6 +1703,12 @@ static void cb_download_finished(WebKitDownload *d, struct download *dl)
 	update_dl_l(NULL);
 }
 #else
+static void cb_document_load_finished(WebKitWebView *wv, WebKitWebFrame *f, struct window *w)
+{
+	if (global.dom_ready != NULL && f == webkit_web_view_get_main_frame(wv))
+		exec_line(w, wv, global.dom_ready);
+}
+
 static gboolean cb_download(WebKitWebView *wv, WebKitDownload *d, struct window *w)
 {
 	if (new_download(d, webkit_download_get_suggested_filename(d)) == NULL)
@@ -1706,13 +1723,12 @@ static void cb_download_status_changed(WebKitDownload *d, GParamSpec *p, struct 
 		open_download((struct window *) global.windows.h, NULL, dl, global.dl_open_cmd);  /* FIXME */
 	update_dl_l(NULL);
 }
-
-static void cb_document_load_finished(WebKitWebView *wv, WebKitWebFrame *f, struct window *w)
-{
-	if (global.dom_ready != NULL && f == webkit_web_view_get_main_frame(wv))
-		exec_line(w, wv, global.dom_ready);
-}
 #endif
+
+static void cb_download_progress_changed(WebKitDownload *d, GParamSpec *p, struct download *dl)
+{
+	update_dl_l(NULL);
+}
 
 #ifdef __HAVE_WEBKIT2__
 static gboolean cb_enter_fullscreen(WebKitWebView *wv, struct window *w)
