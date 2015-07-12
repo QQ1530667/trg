@@ -2334,9 +2334,8 @@ static int cmd_move(struct window *w, WebKitWebView *wv, struct command *c, int 
 	g_object_ref(G_OBJECT(t->c));
 	remove_tab(t);
 	global.show_window = FALSE;
-	if (wn == NULL)
-		wn = new_window(g_malloc0(sizeof(struct window)), false, NULL);
-	if (w->tabs.h == NULL) gtk_widget_destroy(w->w);
+	if (wn == NULL) wn = new_window(g_malloc0(sizeof(struct window)), false, NULL);
+	if (w->tabs.h == NULL && wn != w) gtk_widget_destroy(w->w);
 	else update_tabs_l(w);
 	t->w = wn;
 	LIST_ADD_TAIL(&wn->tabs, (struct node *) t);
@@ -2353,6 +2352,7 @@ static int cmd_move(struct window *w, WebKitWebView *wv, struct command *c, int 
 	if (wn->tabs.h == (struct node *) t) gtk_widget_grab_focus(GTK_WIDGET(GET_CURRENT_VIEW(wn)));
 	LIST_FOREACH(&wn->tabs, t) update_title(t);
 	global.show_window = TRUE;
+	update_tabs_l(wn);
 	gtk_widget_show(wn->w);
 
 	return 0;
