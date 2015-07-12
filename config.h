@@ -131,6 +131,8 @@ static gchar cmd_unalias_desc[]       = "unalias: remove an alias definition\n";
 static gchar cmd_unalias_usage[]      = "unalias: usage: unalias <name>\n";
 static gchar cmd_unbind_desc[]        = "unbind: unbind a key\n";
 static gchar cmd_unbind_usage[]       = "unbind: usage: unbind <modes:a,n,c,i,p> <modifiers:-,s|S,c,1,2,3,4,5> <key>\n";
+static gchar cmd_unbind_all_desc[]    = "unbind-all: unbind all keys\n";
+static gchar cmd_unbind_all_usage[]   = "unbind-all: usage: unbind-all\n";
 static gchar cmd_unset_desc[]         = "unset: unset a variable\n";
 static gchar cmd_unset_usage[]        = "unset: usage: unset <name>\n";
 static gchar cmd_wclose_desc[]        = "wclose: close the current window\n";
@@ -189,6 +191,7 @@ static struct command commands[] = {
 	{ "topen",           cmd_topen_desc,        cmd_topen_usage,        cmd_topen },
 	{ "unalias",         cmd_unalias_desc,      cmd_unalias_usage,      cmd_unalias },
 	{ "unbind",          cmd_unbind_desc,       cmd_unbind_usage,       cmd_unbind },
+	{ "unbind-all",      cmd_unbind_all_desc,   cmd_unbind_all_usage,   cmd_unbind_all },
 	{ "unset",           cmd_unset_desc,        cmd_unset_usage,        cmd_unset },
 	{ "wclose",          cmd_wclose_desc,       cmd_wclose_usage,       cmd_wclose },
 	{ "window",          cmd_window_desc,       cmd_window_usage,       cmd_window },

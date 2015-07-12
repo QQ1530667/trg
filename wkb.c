@@ -343,6 +343,7 @@ static int cmd_tclose(struct window *, WebKitWebView *, struct command *, int, g
 static int cmd_topen(struct window *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_unalias(struct window *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_unbind(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_unbind_all(struct window *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_unset(struct window *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_wclose(struct window *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_window(struct window *, WebKitWebView *, struct command *, int, gchar **);
@@ -2645,6 +2646,13 @@ static int cmd_unbind(struct window *w, WebKitWebView *wv, struct command *c, in
 	if (b == NULL) return 0;
 	b->mode &= ~mode;
 	if (b->mode == 0) destroy_bind(w, b);
+	return 0;
+}
+
+static int cmd_unbind_all(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+{
+	while (global.binds.h)
+		destroy_bind(w, (struct bind *) global.binds.h);
 	return 0;
 }
 
