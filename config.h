@@ -85,6 +85,8 @@ static gchar cmd_last_desc[]          = "last: switch to the previously displaye
 static gchar cmd_last_usage[]         = "last: usage: last\n";
 static gchar cmd_loadconfig_desc[]    = "loadconfig: load configuration file(s); relative to {"VAR_CONFIG_DIR"} if not full path\n";
 static gchar cmd_loadconfig_usage[]   = "loadconfig: usage: loadconfig <file ...>\n";
+static gchar cmd_move_desc[]          = "move: move the current tab to another window, or a new window if id is not given\n";
+static gchar cmd_move_usage[]         = "move: usage: move [id|first|last]\n";
 static gchar cmd_msg_desc[]           = "msg: display a message in the status bar for 1s\n";
 static gchar cmd_msg_usage[]          = "msg: usage: msg [args ...]\n";
 static gchar cmd_nav_desc[]           = "nav: navigate back or forward\n";
@@ -164,6 +166,7 @@ static struct command commands[] = {
 	{ "js-file",         cmd_js_file_desc,      cmd_js_file_usage,      cmd_js_file },
 	{ "last",            cmd_last_desc,         cmd_last_usage,         cmd_last },
 	{ "loadconfig",      cmd_loadconfig_desc,   cmd_loadconfig_usage,   cmd_loadconfig },
+	{ "move",            cmd_move_desc,         cmd_move_usage,         cmd_move },
 	{ "msg",             cmd_msg_desc,          cmd_msg_usage,          cmd_msg },
 	{ "nav",             cmd_nav_desc,          cmd_nav_usage,          cmd_nav },
 	{ "necho",           cmd_necho_desc,        cmd_necho_usage,        cmd_echo },

@@ -217,7 +217,7 @@ static struct download * new_download(WebKitDownload *, const gchar *);
 static struct hist * new_hist(struct window *, const gchar *);
 static GtkWidget * new_tab(struct window *, WebKitWebView *, const gchar *);
 static struct var * new_var(struct window *, const gchar *, int);
-static struct window * new_window(struct window *, const gchar *);
+static struct window * new_window(struct window *, gboolean, const gchar *);
 static void open_download(struct window *, WebKitWebView *, struct download *, const gchar *);
 static void open_input(struct window *, const gchar *);
 static void open_uri(WebKitWebView *, const gchar *);
@@ -227,6 +227,7 @@ static void parse_mode_and_mod_mask(struct window *, const gchar *, const gchar 
 static void print_bind(struct window *, struct bind *);
 static void print_download(struct window *, struct download *);
 static void quit(void);
+static struct tab * remove_tab(struct tab *);
 static void set_mode(struct window *, guint);
 static int set_var_value(struct window *, WebKitWebView *, struct var *, const gchar *);
 static void signal_handler(int);
@@ -247,16 +248,16 @@ static gboolean cb_cmd_fifo_in(GIOChannel *, GIOCondition, struct window *);
 static void cb_console_size_allocate(WebKitWebView *, GdkRectangle *, struct window *);
 #ifdef __HAVE_WEBKIT2__
 	#if WEBKIT_CHECK_VERSION(2, 5, 1)
-		static GtkWidget * cb_create(WebKitWebView *, WebKitNavigationAction *, struct window *);
+		static GtkWidget * cb_create(WebKitWebView *, WebKitNavigationAction *, struct tab *);
 	#else
-		static GtkWidget * cb_create(WebKitWebView *, struct window *);
+		static GtkWidget * cb_create(WebKitWebView *, struct tab *);
 	#endif
-	static gboolean cb_decide_policy(WebKitWebView *, WebKitPolicyDecision *, WebKitPolicyDecisionType, struct window *);
+	static gboolean cb_decide_policy(WebKitWebView *, WebKitPolicyDecision *, WebKitPolicyDecisionType, struct tab *);
 #else
-	static GtkWidget * cb_create(WebKitWebView *, WebKitWebFrame *, struct window *);
-	static gboolean cb_decide_mime(WebKitWebView *, WebKitWebFrame *, WebKitNetworkRequest *, gchar *, WebKitWebPolicyDecision *, struct window *);
-	static gboolean cb_decide_policy(WebKitWebView *, WebKitWebFrame *, WebKitNetworkRequest *, WebKitWebNavigationAction *, WebKitWebPolicyDecision *, struct window *);
-	static gboolean cb_decide_window(WebKitWebView *, WebKitWebFrame *, WebKitNetworkRequest *, WebKitWebNavigationAction *, WebKitWebPolicyDecision *, struct window *);
+	static GtkWidget * cb_create(WebKitWebView *, WebKitWebFrame *, struct tab *);
+	static gboolean cb_decide_mime(WebKitWebView *, WebKitWebFrame *, WebKitNetworkRequest *, gchar *, WebKitWebPolicyDecision *, struct tab *);
+	static gboolean cb_decide_policy(WebKitWebView *, WebKitWebFrame *, WebKitNetworkRequest *, WebKitWebNavigationAction *, WebKitWebPolicyDecision *, struct tab *);
+	static gboolean cb_decide_window(WebKitWebView *, WebKitWebFrame *, WebKitNetworkRequest *, WebKitWebNavigationAction *, WebKitWebPolicyDecision *, struct tab *);
 #endif
 static void cb_destroy(WebKitWebView *, struct window *);
 #ifdef __HAVE_WEBKIT2__
@@ -265,29 +266,29 @@ static void cb_destroy(WebKitWebView *, struct window *);
 	static void cb_download_failed(WebKitDownload *, GError *, struct download *);
 	static void cb_download_finished(WebKitDownload *, struct download *);
 #else
-	static void cb_document_load_finished(WebKitWebView *, WebKitWebFrame *, struct window *);
-	static gboolean cb_download(WebKitWebView *, WebKitDownload *, struct window *);
+	static void cb_document_load_finished(WebKitWebView *, WebKitWebFrame *, struct tab *);
+	static gboolean cb_download(WebKitWebView *, WebKitDownload *, void *);
 	static void cb_download_status_changed(WebKitDownload *, GParamSpec *, struct download *);
 #endif
 static void cb_download_progress_changed(WebKitDownload *, GParamSpec *, struct download *);
 #ifdef __HAVE_WEBKIT2__
-	static gboolean cb_enter_fullscreen(WebKitWebView *, struct window *);
+	static gboolean cb_enter_fullscreen(WebKitWebView *, struct tab *);
 #else
-	static gboolean cb_enter_fullscreen(WebKitWebView *, WebKitDOMHTMLElement *, struct window *);
+	static gboolean cb_enter_fullscreen(WebKitWebView *, WebKitDOMHTMLElement *, struct tab *);
 #endif
 static void cb_input_end(WebKitWebView *, struct window *);
 #ifndef __HAVE_WEBKIT2__
-	static GtkWidget * cb_inspect_web_view(GtkWidget *, GtkWidget *, struct window *);
+	static GtkWidget * cb_inspect_web_view(GtkWidget *, GtkWidget *, struct tab *);
 #endif
 static gboolean cb_keypress(WebKitWebView *, GdkEventKey *, struct window *);
 #ifdef __HAVE_WEBKIT2__
-	static gboolean cb_leave_fullscreen(WebKitWebView *, struct window *);
-	static void cb_load_changed(WebKitWebView *, WebKitLoadEvent, struct window *);
-	static void cb_mouse_target_changed(WebKitWebView *, WebKitHitTestResult *, guint, struct window *);
+	static gboolean cb_leave_fullscreen(WebKitWebView *, struct tab *);
+	static void cb_load_changed(WebKitWebView *, WebKitLoadEvent, struct tab *);
+	static void cb_mouse_target_changed(WebKitWebView *, WebKitHitTestResult *, guint, struct tab *);
 #else
-	static gboolean cb_leave_fullscreen(WebKitWebView *, WebKitDOMHTMLElement *, struct window *);
-	static void cb_load_changed(WebKitWebView *, GParamSpec *, struct window *);
-	static void cb_mouse_target_changed(WebKitWebView *, gchar *, gchar *, struct window *);
+	static gboolean cb_leave_fullscreen(WebKitWebView *, WebKitDOMHTMLElement *, struct tab *);
+	static void cb_load_changed(WebKitWebView *, GParamSpec *, struct tab *);
+	static void cb_mouse_target_changed(WebKitWebView *, gchar *, gchar *, struct tab *);
 #endif
 static void cb_progress_changed(WebKitWebView *, GParamSpec *, struct tab *);
 static void cb_tab_changed(WebKitWebView *, GtkWidget *, guint, struct window *);
@@ -323,6 +324,7 @@ static int cmd_js(struct window *, WebKitWebView *, struct command *, int, gchar
 static int cmd_js_file(struct window *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_last(struct window *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_loadconfig(struct window *, WebKitWebView *, struct command *, int, gchar **);
+static int cmd_move(struct window *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_msg(struct window *, WebKitWebView *, struct command *, int, gchar **);
 static int cmd_nav(struct window *,  WebKitWebView *,struct command *, int, gchar **);
 static int cmd_open_input(struct window *, WebKitWebView *, struct command *, int, gchar **);
@@ -534,16 +536,11 @@ static void destroy_download(struct download *dl)
 
 static void destroy_tab(struct tab *t)
 {
-	struct window *w = t->w;
 	webkit_web_view_stop_loading(GET_VIEW_FROM_CHILD(t->c));  /* This is required. Otherwise cb_progress_changed gets called after this function runs... */
-	if (w->tabs.h == (struct node *) t && w->tabs.h->n != NULL)
-		gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), ((struct tab *) w->tabs.h->n)->c));
-	LIST_REMOVE(&w->tabs, (struct node *) t);
-	gtk_notebook_remove_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), t->c));
+	remove_tab(t);
 	g_free(t->uri_label_text);
 	g_free(t->uri);
 	g_free(t);
-	LIST_FOREACH(&w->tabs, t) update_title(t);
 }
 
 static struct token * destroy_token(struct list *tok, struct token *t)
@@ -892,13 +889,13 @@ static GtkWidget * new_tab(struct window *w, WebKitWebView *v, const gchar *uri)
 	g_signal_connect(wv, "notify::title", G_CALLBACK(cb_title_changed), t);
 	g_signal_connect(wv, "notify::uri", G_CALLBACK(cb_uri_changed), t);
 #ifdef __HAVE_WEBKIT2__
-	g_signal_connect(wv, "load-changed", G_CALLBACK(cb_load_changed), w);
-	g_signal_connect(wv, "decide-policy", G_CALLBACK(cb_decide_policy), w);
-	g_signal_connect(wv, "create", G_CALLBACK(cb_create), w);
+	g_signal_connect(wv, "load-changed", G_CALLBACK(cb_load_changed), t);
+	g_signal_connect(wv, "decide-policy", G_CALLBACK(cb_decide_policy), t);
+	g_signal_connect(wv, "create", G_CALLBACK(cb_create), t);
 	g_signal_connect(wv, "notify::estimated-load-progress", G_CALLBACK(cb_progress_changed), t);
-	g_signal_connect(wv, "mouse-target-changed", G_CALLBACK(cb_mouse_target_changed), w);
-	g_signal_connect(wv, "enter-fullscreen", G_CALLBACK(cb_enter_fullscreen), w);
-	g_signal_connect(wv, "leave-fullscreen", G_CALLBACK(cb_leave_fullscreen), w);
+	g_signal_connect(wv, "mouse-target-changed", G_CALLBACK(cb_mouse_target_changed), t);
+	g_signal_connect(wv, "enter-fullscreen", G_CALLBACK(cb_enter_fullscreen), t);
+	g_signal_connect(wv, "leave-fullscreen", G_CALLBACK(cb_leave_fullscreen), t);
 	g_signal_connect(wv, "close", G_CALLBACK(cb_close), t);
 	t->c = wv;
 #else
@@ -906,18 +903,18 @@ static GtkWidget * new_tab(struct window *w, WebKitWebView *v, const gchar *uri)
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_container_add(GTK_CONTAINER(sw), wv);
 	gtk_widget_show(sw);
-	g_signal_connect(wv, "notify::load-status", G_CALLBACK(cb_load_changed), w);
-	g_signal_connect(wv, "document-load-finished", G_CALLBACK(cb_document_load_finished), w);
-	g_signal_connect(wv, "mime-type-policy-decision-requested", G_CALLBACK(cb_decide_mime), w);
-	g_signal_connect(wv, "navigation-policy-decision-requested", G_CALLBACK(cb_decide_policy), w);
-	g_signal_connect(wv, "new-window-policy-decision-requested", G_CALLBACK(cb_decide_window), w);
-	g_signal_connect(wv, "download-requested", G_CALLBACK(cb_download), w);
-	g_signal_connect(wv, "create-web-view", G_CALLBACK(cb_create), w);
+	g_signal_connect(wv, "notify::load-status", G_CALLBACK(cb_load_changed), t);
+	g_signal_connect(wv, "document-load-finished", G_CALLBACK(cb_document_load_finished), t);
+	g_signal_connect(wv, "mime-type-policy-decision-requested", G_CALLBACK(cb_decide_mime), t);
+	g_signal_connect(wv, "navigation-policy-decision-requested", G_CALLBACK(cb_decide_policy), t);
+	g_signal_connect(wv, "new-window-policy-decision-requested", G_CALLBACK(cb_decide_window), t);
+	g_signal_connect(wv, "download-requested", G_CALLBACK(cb_download), NULL);
+	g_signal_connect(wv, "create-web-view", G_CALLBACK(cb_create), t);
 	g_signal_connect(wv, "notify::progress", G_CALLBACK(cb_progress_changed), t);
-	g_signal_connect(wv, "hovering-over-link", G_CALLBACK(cb_mouse_target_changed), w);
-	g_signal_connect(G_OBJECT(webkit_web_view_get_inspector(WEBKIT_WEB_VIEW(wv))), "inspect-web-view", G_CALLBACK(cb_inspect_web_view), w);
-	g_signal_connect(wv, "entering-fullscreen", G_CALLBACK(cb_enter_fullscreen), w);
-	g_signal_connect(wv, "leaving-fullscreen", G_CALLBACK(cb_leave_fullscreen), w);
+	g_signal_connect(wv, "hovering-over-link", G_CALLBACK(cb_mouse_target_changed), t);
+	g_signal_connect(G_OBJECT(webkit_web_view_get_inspector(WEBKIT_WEB_VIEW(wv))), "inspect-web-view", G_CALLBACK(cb_inspect_web_view), t);
+	g_signal_connect(wv, "entering-fullscreen", G_CALLBACK(cb_enter_fullscreen), t);
+	g_signal_connect(wv, "leaving-fullscreen", G_CALLBACK(cb_leave_fullscreen), t);
 	g_signal_connect(wv, "close-web-view", G_CALLBACK(cb_close), t);
 	t->c = sw;
 #endif
@@ -951,7 +948,7 @@ static struct var * new_var(struct window *w, const gchar *name, int can_unset)
 	return v;
 }
 
-static struct window * new_window(struct window *w, const gchar *uri)
+static struct window * new_window(struct window *w, gboolean create, const gchar *uri)
 {
 	int i;
 	gchar *tmp;
@@ -1059,13 +1056,14 @@ static struct window * new_window(struct window *w, const gchar *uri)
 #endif
 
 	init_cmd_fifo(w);
-	new_tab(w, NULL, uri);
-	set_mode(w, MODE_CMD);  /* workaround for GTK3 incorrectly calculating the size of w->i */
-	set_mode(w, MODE_NORMAL);
 	update_dl_l(w);
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
 		if (default_wkb_settings[i].scope == WKB_SETTING_SCOPE_WINDOW && default_wkb_settings[i].set != NULL)
 			default_wkb_settings[i].set(w, default_wkb_settings[i].default_value);
+	if (create)
+		new_tab(w, NULL, uri);
+	set_mode(w, MODE_CMD);  /* workaround for GTK3 incorrectly calculating the size of w->i */
+	set_mode(w, MODE_NORMAL);
 	LIST_ADD_TAIL(&global.windows, (struct node *) w);
 	return w;
 }
@@ -1320,6 +1318,18 @@ static void quit(void)
 	else exit(0);
 }
 
+static struct tab * remove_tab(struct tab *t)
+{
+	struct tab *tt;
+	struct window *w = t->w;
+	if (w->tabs.h == (struct node *) t && w->tabs.h->n != NULL)
+		gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), ((struct tab *) w->tabs.h->n)->c));
+	LIST_REMOVE(&w->tabs, (struct node *) t);
+	gtk_notebook_remove_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), t->c));
+	LIST_FOREACH(&w->tabs, tt) update_title(tt);
+	return t;
+}
+
 static void set_mode(struct window *w, guint m)
 {
 	switch(m) {
@@ -1337,7 +1347,7 @@ static void set_mode(struct window *w, guint m)
 			gtk_widget_set_can_focus(w->i, FALSE);
 			gtk_notebook_set_current_page(GTK_NOTEBOOK(w->bar_nb), BAR_STATUS_PAGE);
 			gtk_entry_set_text(GTK_ENTRY(w->i), "");
-			if (w->mode == MODE_CMD) gtk_widget_grab_focus(GTK_WIDGET(GET_CURRENT_VIEW(w)));
+			if (w->mode == MODE_CMD && GET_CURRENT_TAB(w)) gtk_widget_grab_focus(GTK_WIDGET(GET_CURRENT_VIEW(w)));
 			w->current_hist = NULL;
 			break;
 		case MODE_CMD:
@@ -1562,19 +1572,19 @@ static void cb_console_size_allocate(WebKitWebView *wv, GdkRectangle *allocation
 
 #ifdef __HAVE_WEBKIT2__
 #if WEBKIT_CHECK_VERSION(2, 5, 1)
-static GtkWidget * cb_create(WebKitWebView *wv, WebKitNavigationAction *na, struct window *w)
+static GtkWidget * cb_create(WebKitWebView *wv, WebKitNavigationAction *na, struct tab *t)
 #else
-static GtkWidget * cb_create(WebKitWebView *wv, struct window *w)
+static GtkWidget * cb_create(WebKitWebView *wv, struct tab *t)
 #endif
 {
-	if (global.allow_popups) return new_tab(w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL);
+	if (global.allow_popups) return new_tab(t->w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL);
 	else {
-		msg(w, "cb_create(): blocked");
+		msg(t->w, "cb_create(): blocked");
 		return NULL;
 	}
 }
 
-static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, WebKitPolicyDecisionType dt, struct window *w)
+static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, WebKitPolicyDecisionType dt, struct tab *t)
 {
 #if WEBKIT_CHECK_VERSION(2, 6, 0)
 	WebKitNavigationAction *na;
@@ -1587,9 +1597,9 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 			na = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(d));
 			if (webkit_navigation_action_get_mouse_button(na) == 2) {
 				if (webkit_navigation_action_get_modifiers(na) & GDK_SHIFT_MASK)
-					new_window(g_malloc0(sizeof(struct window)), webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
+					new_window(g_malloc0(sizeof(struct window)), TRUE, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
 				else
-					new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
+					new_tab(t->w, NULL, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
 				webkit_policy_decision_ignore(d);
 				return TRUE;
 			}
@@ -1597,9 +1607,9 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 			nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
 			if (webkit_navigation_policy_decision_get_mouse_button(nd) == 2) {
 				if (webkit_navigation_policy_decision_get_modifiers(nd) & GDK_SHIFT_MASK)
-					new_window(g_malloc0(sizeof(struct window)), webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
+					new_window(g_malloc0(sizeof(struct window)), TRUE, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
 				else
-					new_tab(w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
+					new_tab(t->w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
 				webkit_policy_decision_ignore(d);
 				return TRUE;
 			}
@@ -1624,39 +1634,39 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 	return FALSE;
 }
 #else
-static GtkWidget * cb_create(WebKitWebView *wv, WebKitWebFrame *f, struct window *w)
+static GtkWidget * cb_create(WebKitWebView *wv, WebKitWebFrame *f, struct tab *t)
 {
-	if (global.allow_popups) return new_tab(w, NULL, NULL);
+	if (global.allow_popups) return new_tab(t->w, NULL, NULL);
 	else {
-		msg(w, "cb_create(): blocked");
+		msg(t->w, "cb_create(): blocked");
 		return NULL;
 	}
 }
 
-static gboolean cb_decide_mime(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, gchar *mime, WebKitWebPolicyDecision *d, struct window *w)
+static gboolean cb_decide_mime(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, gchar *mime, WebKitWebPolicyDecision *d, struct tab *t)
 {
 	if (webkit_web_view_can_show_mime_type(wv, mime)) webkit_web_policy_decision_use(d);
 	else webkit_web_policy_decision_download(d);
 	return TRUE;
 }
 
-static gboolean cb_decide_policy(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, WebKitWebNavigationAction *na, WebKitWebPolicyDecision *d, struct window *w)
+static gboolean cb_decide_policy(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, WebKitWebNavigationAction *na, WebKitWebPolicyDecision *d, struct tab *t)
 {
 	if (webkit_web_navigation_action_get_button(na) == 2) {
 		if (webkit_web_navigation_action_get_modifier_state(na) & GDK_SHIFT_MASK)
-			new_window(g_malloc0(sizeof(struct window)), webkit_network_request_get_uri(r));
+			new_window(g_malloc0(sizeof(struct window)), TRUE, webkit_network_request_get_uri(r));
 		else
-			new_tab(w, NULL, webkit_network_request_get_uri(r));
+			new_tab(t->w, NULL, webkit_network_request_get_uri(r));
 		webkit_web_policy_decision_ignore(d);
 		return TRUE;
 	}
 	return FALSE;
 }
 
-static gboolean cb_decide_window(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, WebKitWebNavigationAction *na, WebKitWebPolicyDecision *d, struct window *w)
+static gboolean cb_decide_window(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, WebKitWebNavigationAction *na, WebKitWebPolicyDecision *d, struct tab *t)
 {
 	if (webkit_web_navigation_action_get_reason(na) == WEBKIT_WEB_NAVIGATION_REASON_LINK_CLICKED) {
-		new_tab(w, NULL, webkit_network_request_get_uri(r));
+		new_tab(t->w, NULL, webkit_network_request_get_uri(r));
 		webkit_web_policy_decision_ignore(d);
 		return TRUE;
 	}
@@ -1703,13 +1713,13 @@ static void cb_download_finished(WebKitDownload *d, struct download *dl)
 	update_dl_l(NULL);
 }
 #else
-static void cb_document_load_finished(WebKitWebView *wv, WebKitWebFrame *f, struct window *w)
+static void cb_document_load_finished(WebKitWebView *wv, WebKitWebFrame *f, struct tab *t)
 {
 	if (global.dom_ready != NULL && f == webkit_web_view_get_main_frame(wv))
-		exec_line(w, wv, global.dom_ready);
+		exec_line(t->w, wv, global.dom_ready);
 }
 
-static gboolean cb_download(WebKitWebView *wv, WebKitDownload *d, struct window *w)
+static gboolean cb_download(WebKitWebView *wv, WebKitDownload *d, void *v)
 {
 	if (new_download(d, webkit_download_get_suggested_filename(d)) == NULL)
 		return FALSE;
@@ -1731,12 +1741,12 @@ static void cb_download_progress_changed(WebKitDownload *d, GParamSpec *p, struc
 }
 
 #ifdef __HAVE_WEBKIT2__
-static gboolean cb_enter_fullscreen(WebKitWebView *wv, struct window *w)
+static gboolean cb_enter_fullscreen(WebKitWebView *wv, struct tab *t)
 #else
-static gboolean cb_enter_fullscreen(WebKitWebView *wv, WebKitDOMHTMLElement *e, struct window *w)
+static gboolean cb_enter_fullscreen(WebKitWebView *wv, WebKitDOMHTMLElement *e, struct tab *t)
 #endif
 {
-	fullscreen_mode(w, TRUE);
+	fullscreen_mode(t->w, TRUE);
 	return FALSE;
 }
 
@@ -1752,7 +1762,7 @@ static void cb_input_end(WebKitWebView *wv, struct window *w)
 }
 
 #ifndef __HAVE_WEBKIT2__
-static GtkWidget * cb_inspect_web_view(GtkWidget *i, GtkWidget *wv, struct window *w)
+static GtkWidget * cb_inspect_web_view(GtkWidget *i, GtkWidget *wv, struct tab *t)
 {
 	GtkWidget *window, *sw, *new_wv;
 	new_wv = webkit_web_view_new();
@@ -1790,69 +1800,69 @@ static gboolean cb_keypress(WebKitWebView *wv, GdkEventKey *ev, struct window *w
 }
 
 #ifdef __HAVE_WEBKIT2__
-static gboolean cb_leave_fullscreen(WebKitWebView *wv, struct window *w)
+static gboolean cb_leave_fullscreen(WebKitWebView *wv, struct tab *t)
 #else
-static gboolean cb_leave_fullscreen(WebKitWebView *wv, WebKitDOMHTMLElement *e, struct window *w)
+static gboolean cb_leave_fullscreen(WebKitWebView *wv, WebKitDOMHTMLElement *e, struct tab *t)
 #endif
 {
-	fullscreen_mode(w, FALSE);
+	fullscreen_mode(t->w, FALSE);
 	return FALSE;
 }
 
 #ifdef __HAVE_WEBKIT2__
-static void cb_load_changed(WebKitWebView *wv, WebKitLoadEvent e, struct window *w)
+static void cb_load_changed(WebKitWebView *wv, WebKitLoadEvent e, struct tab *t)
 {
 	switch (e) {
 		case WEBKIT_LOAD_COMMITTED:
-			if (global.load_started != NULL) exec_line(w, wv, global.load_started);
+			if (global.load_started != NULL) exec_line(t->w, wv, global.load_started);
 			break;
 		case WEBKIT_LOAD_FINISHED:
-			if (global.dom_ready != NULL) exec_line(w, wv, global.dom_ready);
-			if (global.load_finished != NULL) exec_line(w, wv, global.load_finished);
+			if (global.dom_ready != NULL) exec_line(t->w, wv, global.dom_ready);
+			if (global.load_finished != NULL) exec_line(t->w, wv, global.load_finished);
 			break;
 		default:
 			break;
 	}
 }
 
-static void cb_mouse_target_changed(WebKitWebView *wv, WebKitHitTestResult *ht, guint mod, struct window *w)
+static void cb_mouse_target_changed(WebKitWebView *wv, WebKitHitTestResult *ht, guint mod, struct tab *t)
 {
 	gchar *temp;
 	if (webkit_hit_test_result_context_is_link(ht)) {
-		update_uri(GET_CURRENT_TAB(w), temp = g_strconcat("Link: ", webkit_hit_test_result_get_link_uri(ht), NULL), webkit_hit_test_result_get_link_uri(ht));
+		update_uri(t, temp = g_strconcat("Link: ", webkit_hit_test_result_get_link_uri(ht), NULL), webkit_hit_test_result_get_link_uri(ht));
 		g_free(temp);
 	}
 	else if (webkit_hit_test_result_context_is_media(ht)) {
-		update_uri(GET_CURRENT_TAB(w), temp = g_strconcat("Media: ", webkit_hit_test_result_get_media_uri(ht), NULL), webkit_hit_test_result_get_media_uri(ht));
+		update_uri(t, temp = g_strconcat("Media: ", webkit_hit_test_result_get_media_uri(ht), NULL), webkit_hit_test_result_get_media_uri(ht));
 		g_free(temp);
 	}
 	else
-		update_uri(GET_CURRENT_TAB(w), webkit_web_view_get_uri(wv), webkit_web_view_get_uri(wv));
+		update_uri(t, webkit_web_view_get_uri(wv), webkit_web_view_get_uri(wv));
 }
 #else
-static void cb_load_changed(WebKitWebView *wv, GParamSpec *p, struct window *w)
+static void cb_load_changed(WebKitWebView *wv, GParamSpec *p, struct tab *t)
 {
 	switch (webkit_web_view_get_load_status(wv)) {
 		case WEBKIT_LOAD_COMMITTED:
-			if (global.load_started != NULL) exec_line(w, wv, global.load_started);
+			if (global.load_started != NULL) exec_line(t->w, wv, global.load_started);
 			break;
 		case WEBKIT_LOAD_FINISHED:
-			if (global.load_finished != NULL) exec_line(w, wv, global.load_finished);
+			if (global.load_finished != NULL) exec_line(t->w, wv, global.load_finished);
 			break;
 		default:
 			break;
 	}
 }
 
-static void cb_mouse_target_changed(WebKitWebView *wv, gchar *title, gchar *uri, struct window *w)
+static void cb_mouse_target_changed(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 {
 	gchar *temp;
 	if (uri != NULL) {
-		update_uri(GET_CURRENT_TAB(w), temp = g_strconcat("Link: ", uri, NULL), uri);
+		update_uri(t, temp = g_strconcat("Link: ", uri, NULL), uri);
 		g_free(temp);
 	}
 	else
-		update_uri(GET_CURRENT_TAB(w), webkit_web_view_get_uri(wv), webkit_web_view_get_uri(wv));
+		update_uri(t, webkit_web_view_get_uri(wv), webkit_web_view_get_uri(wv));
 }
 #endif
 
@@ -2297,6 +2307,56 @@ static int cmd_loadconfig(struct window *w, WebKitWebView *wv, struct command *c
 	return 0;
 }
 
+static int cmd_move(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
+{
+	int id;
+	struct tab *t = GET_CURRENT_TAB(w);
+	struct window *wn = NULL;
+
+	if (argc > 2) {
+		out(w, TRUE, c->usage);
+		return 1;
+	}
+	else if (argc == 2) {
+		if (strcmp(argv[1], "first") == 0) wn = (struct window *) global.windows.h;
+		else if (strcmp(argv[1], "last") == 0) wn = (struct window *) global.windows.t;
+		else {
+			id = atoi(argv[1]);
+			LIST_FOREACH(&global.windows, wn) if (wn->id == id) break;
+			if (wn == NULL) {
+				g_free(out(w, TRUE, g_strdup_printf("%s: error: window %s not found\n", argv[0], argv[1])));
+				return 1;
+			}
+		}
+	}
+
+	g_object_ref(G_OBJECT(t->c));
+	remove_tab(t);
+	global.show_window = FALSE;
+	if (wn == NULL)
+		wn = new_window(g_malloc0(sizeof(struct window)), false, NULL);
+	if (w->tabs.h == NULL) gtk_widget_destroy(w->w);
+	else update_tabs_l(w);
+	t->w = wn;
+	LIST_ADD_TAIL(&wn->tabs, (struct node *) t);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(wn->nb), t->c, gtk_label_new(NULL), -1);
+	gtk_container_child_set(GTK_CONTAINER(wn->nb), t->c, "tab-expand", TRUE, NULL);
+#ifdef __HAVE_GTK3__
+	gtk_widget_set_halign(gtk_notebook_get_tab_label(GTK_NOTEBOOK(wn->nb), t->c), GTK_ALIGN_START);
+	gtk_widget_set_valign(gtk_notebook_get_tab_label(GTK_NOTEBOOK(wn->nb), t->c), GTK_ALIGN_CENTER);
+#else
+	gtk_misc_set_alignment(GTK_MISC(gtk_notebook_get_tab_label(GTK_NOTEBOOK(wn->nb), t->c)), 0, 0.5);
+#endif
+	gtk_label_set_ellipsize(GTK_LABEL(gtk_notebook_get_tab_label(GTK_NOTEBOOK(wn->nb), t->c)), PANGO_ELLIPSIZE_END);
+	g_object_unref(G_OBJECT(t->c));
+	if (wn->tabs.h == (struct node *) t) gtk_widget_grab_focus(GTK_WIDGET(GET_CURRENT_VIEW(wn)));
+	LIST_FOREACH(&wn->tabs, t) update_title(t);
+	global.show_window = TRUE;
+	gtk_widget_show(wn->w);
+
+	return 0;
+}
+
 static int cmd_msg(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str = concat_args(argc, argv);
@@ -2541,7 +2601,7 @@ static int cmd_switch(struct window *w, WebKitWebView *wv, struct command *c, in
 
 static int cmd_tclose(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
-	destroy_tab((struct tab *) w->tabs.h);
+	destroy_tab(GET_CURRENT_TAB(w));
 	if (w->tabs.h == NULL) new_tab(w, NULL, global.homepage);
 	update_tabs_l(w);
 	return 0;
@@ -2637,10 +2697,10 @@ static int cmd_window(struct window *w, WebKitWebView *wv, struct command *c, in
 static int cmd_wopen(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str;
-	if (argc <= 1) new_window(g_malloc0(sizeof(struct window)), global.homepage);
+	if (argc <= 1) new_window(g_malloc0(sizeof(struct window)), TRUE, global.homepage);
 	else {
 		str = concat_args(argc, argv);
-		new_window(g_malloc0(sizeof(struct window)), str->str);
+		new_window(g_malloc0(sizeof(struct window)), TRUE, str->str);
 		g_string_free(str, TRUE);
 	}
 	return 0;
@@ -3096,7 +3156,7 @@ static void set_homepage(struct window *w, union wkb_setting v)
 
 static union wkb_setting get_current_uri(struct window *w, int context)
 {
-	return (union wkb_setting) { .s = GET_CURRENT_TAB(w)->uri };
+	return (union wkb_setting) { .s = (GET_CURRENT_TAB(w)) ? GET_CURRENT_TAB(w)->uri : NULL };
 }
 
 static union wkb_setting get_fc_dir(struct window *w, int context)
@@ -3209,7 +3269,7 @@ int main(int argc, char *argv[])
 #endif
 	global.default_width = DEFAULT_WIDTH;
 	global.default_height = DEFAULT_HEIGHT;
-	w = new_window(g_malloc0(sizeof(struct window)), NULL);
+	w = new_window(g_malloc0(sizeof(struct window)), TRUE, NULL);
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
 		if (default_wkb_settings[i].scope == WKB_SETTING_SCOPE_GLOBAL && default_wkb_settings[i].set != NULL)
 			default_wkb_settings[i].set(w, default_wkb_settings[i].default_value);
