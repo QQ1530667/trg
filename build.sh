@@ -43,7 +43,7 @@ done
 
 [ -z "$CC" ] && CC="gcc"
 
-if [ "$CONFIG_WEBKIT_API" == 2 ]; then
+if [ "$CONFIG_WEBKIT_API" = 2 ]; then
 	if pkg-config --exists webkit2gtk-4.0; then
 		WEBKIT_PKG=webkit2gtk-4.0
 	elif pkg-config --exists webkit2gtk-3.0; then
@@ -54,7 +54,7 @@ if [ "$CONFIG_WEBKIT_API" == 2 ]; then
 	fi
 	EXTRA_CFLAGS="$EXTRA_CFLAGS -D__HAVE_WEBKIT2__ -D__HAVE_GTK3__"
 else
-	if [ "$CONFIG_GTK_VERSION" == 3 ]; then
+	if [ "$CONFIG_GTK_VERSION" = 3 ]; then
 		if pkg-config --exists webkitgtk-3.0; then
 			WEBKIT_PKG=webkitgtk-3.0
 			EXTRA_CFLAGS="$EXTRA_CFLAGS -D__HAVE_GTK3__"
