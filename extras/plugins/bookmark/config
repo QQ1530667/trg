@@ -1,6 +1,6 @@
 set bookmark.base "{wkb.plugins-dir}/bookmark"
 set bookmark.file "{bookmark.base}/bookmarks.html"
-alias b "spawn-sync \"{bookmark.base}/bookmark.sh\" \"{bookmark.file}\" \"\{v.uri}\" \"\{v.title}\""
-alias bn "spawn-sync \"{bookmark.base}/bookmark.sh\" \"{bookmark.file}\""
-alias be "spawn \{term} -e \{editor} \"{bookmark.file}\""
+alias b "spawn-sync \"{bookmark.base}/bookmark.sh\" \"\{v.uri}\" \"\{v.title}\""
+alias bn "spawn-sync \"{bookmark.base}/bookmark.sh\""
+alias be "spawn \{term} -e \"{bookmark.base}/edit.sh\" \{editor}"
 unset bookmark.base
