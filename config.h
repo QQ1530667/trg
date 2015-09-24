@@ -27,6 +27,7 @@ static const gchar null_title[]      = "Untitled";
 #define VAR_DL_AUTO_OPEN   "wkb.auto-open-downloads"
 #define VAR_DEFAULT_WIDTH  "wkb.default-width"
 #define VAR_DEFAULT_HEIGHT "wkb.default-height"
+#define VAR_MSG_TIMEOUT    "wkb.msg-timeout"
 #ifdef __HAVE_WEBKIT2__
 	#define VAR_SPELL_LANGS    "wkb.spellcheck-langs"
 	#define VAR_SPELL          "wkb.spellcheck"
@@ -227,6 +228,7 @@ static struct default_wkb_setting default_wkb_settings[] = {
 	{ VAR_DL_AUTO_OPEN,    WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_BOOL,    get_dl_auto_open,    set_dl_auto_open,    { .b = FALSE } },
 	{ VAR_DEFAULT_WIDTH,   WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_INT,     get_default_width,   set_default_width,   { .i = DEFAULT_WIDTH } },
 	{ VAR_DEFAULT_HEIGHT,  WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_INT,     get_default_height,  set_default_height,  { .i = DEFAULT_HEIGHT } },
+	{ VAR_MSG_TIMEOUT,     WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_INT,     get_msg_timeout,     set_msg_timeout,     { .i = 2000 } },
 #ifdef __HAVE_WEBKIT2__
 	{ VAR_SPELL_LANGS,     WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_spell_langs,     set_spell_langs,     { .s = NULL } },
 	{ VAR_SPELL,           WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_BOOL,    get_spell,           set_spell,           { .b = FALSE } },

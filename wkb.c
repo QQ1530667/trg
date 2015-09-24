@@ -66,7 +66,7 @@ static struct {
 	int next_download_id, next_window_id;
 	gboolean show_window;  /* Show new windows when created. If false, the new window must be shown manually. */
 	/* settings; WKB_SETTING_SCOPE_GLOBAL */
-	int default_width, default_height;
+	int default_width, default_height, msg_timeout;
 	gboolean allow_popups, dl_auto_open;
 	gchar *config_dir, *cookie_file, *cookie_policy, *download_dir,
 		*dl_open_cmd, *homepage, *fc_tmp, *clipboard_tmp,
@@ -387,6 +387,8 @@ static union wkb_setting get_default_width(struct window *, int);
 static void set_default_width(struct window *, union wkb_setting);
 static union wkb_setting get_default_height(struct window *, int);
 static void set_default_height(struct window *, union wkb_setting);
+static union wkb_setting get_msg_timeout(struct window *, int);
+static void set_msg_timeout(struct window *, union wkb_setting);
 #ifdef __HAVE_WEBKIT2__
 	static union wkb_setting get_spell_langs(struct window *, int);
 	static void set_spell_langs(struct window *, union wkb_setting);
@@ -801,7 +803,8 @@ static void msg(struct window *w, const gchar *s)
 	gtk_label_set_text(GTK_LABEL(w->msg_l), s);
 	gtk_widget_show(w->msg_l);
 	if (w->timeout) g_source_remove(w->timeout);
-	w->timeout = g_timeout_add(1000, (GSourceFunc) msg_timeout, w);
+	if (global.msg_timeout > 0)
+		w->timeout = g_timeout_add(global.msg_timeout, (GSourceFunc) msg_timeout, w);
 }
 
 static void navigate(struct window *w, WebKitWebView *v, int n)
@@ -3102,6 +3105,16 @@ static union wkb_setting get_default_height(struct window *w, int context)
 static void set_default_height(struct window *w, union wkb_setting v)
 {
 	global.default_height = (v.i > 0) ? v.i : 1;
+}
+
+static union wkb_setting get_msg_timeout(struct window *w, int context)
+{
+	return (union wkb_setting) { .i = global.msg_timeout };
+}
+
+static void set_msg_timeout(struct window *w, union wkb_setting v)
+{
+	global.msg_timeout = (v.i >= 0) ? v.i : 0;
 }
 
 #ifdef __HAVE_WEBKIT2__
