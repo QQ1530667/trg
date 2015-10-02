@@ -20,6 +20,7 @@ static const gchar null_title[]      = "Untitled";
 #define VAR_AUTO_SCROLL    "wkb.auto-scroll"
 #define VAR_SHOW_CONSOLE   "wkb.show-console"
 #define VAR_PRINT_KEYVAL   "wkb.print-keyval"
+#define VAR_MOD_MASK       "wkb.mod-mask"
 #define VAR_FULLSCREEN     "wkb.fullscreen"
 #define VAR_ALLOW_POPUPS   "wkb.allow-popups"
 #define VAR_DOWNLOAD_DIR   "wkb.download-dir"
@@ -221,6 +222,7 @@ static struct default_wkb_setting default_wkb_settings[] = {
 	{ VAR_AUTO_SCROLL,     WKB_SETTING_SCOPE_WINDOW,  WKB_SETTING_TYPE_BOOL,    get_auto_scroll,     set_auto_scroll,     { .b = TRUE } },
 	{ VAR_SHOW_CONSOLE,    WKB_SETTING_SCOPE_WINDOW,  WKB_SETTING_TYPE_BOOL,    get_show_console,    set_show_console,    { .b = FALSE } },
 	{ VAR_PRINT_KEYVAL,    WKB_SETTING_SCOPE_WINDOW,  WKB_SETTING_TYPE_BOOL,    get_print_keyval,    set_print_keyval,    { .b = FALSE } },
+	{ VAR_MOD_MASK,        WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_mod_mask,        set_mod_mask,        { .s = "235" } },
 	{ VAR_FULLSCREEN,      WKB_SETTING_SCOPE_WINDOW,  WKB_SETTING_TYPE_BOOL,    get_fullscreen,      set_fullscreen,      { .b = FALSE } },
 	{ VAR_ALLOW_POPUPS,    WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_BOOL,    get_allow_popups,    set_allow_popups,    { .b = TRUE } },
 	{ VAR_DOWNLOAD_DIR,    WKB_SETTING_SCOPE_GLOBAL,  WKB_SETTING_TYPE_STRING,  get_download_dir,    set_download_dir,    { .s = NULL } },

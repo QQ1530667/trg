@@ -66,6 +66,7 @@ static struct {
 	int next_download_id, next_window_id;
 	gboolean show_window;  /* Show new windows when created. If false, the new window must be shown manually. */
 	/* settings; WKB_SETTING_SCOPE_GLOBAL */
+	guint mod_mask;
 	int default_width, default_height, msg_timeout;
 	gboolean allow_popups, dl_auto_open;
 	gchar *config_dir, *cookie_file, *cookie_policy, *download_dir,
@@ -223,7 +224,8 @@ static void open_input(struct window *, const gchar *);
 static void open_uri(WebKitWebView *, const gchar *);
 static gchar * out(struct window *, gboolean, gchar *);
 static int parse(struct window *, WebKitWebView *, struct list *, gchar **);
-static void parse_mode_and_mod_mask(struct window *, const gchar *, const gchar *, guint *, guint *, const gchar *);
+static void parse_mod_mask(struct window *, const gchar *, guint *, const gchar *);
+static void parse_mode_mask(struct window *, const gchar *, guint *, const gchar *);
 static void print_bind(struct window *, struct bind *);
 static void print_download(struct window *, struct download *);
 static void quit(void);
@@ -373,6 +375,8 @@ static union wkb_setting get_show_console(struct window *, int);
 static void set_show_console(struct window *, union wkb_setting);
 static union wkb_setting get_print_keyval(struct window *, int);
 static void set_print_keyval(struct window *, union wkb_setting);
+static union wkb_setting get_mod_mask(struct window *, int);
+static void set_mod_mask(struct window *, union wkb_setting);
 static union wkb_setting get_fullscreen(struct window *, int);
 static void set_fullscreen(struct window *, union wkb_setting);
 static union wkb_setting get_allow_popups(struct window *, int);
@@ -788,7 +792,7 @@ static int modmask_compare(guint mod, guint gdk_state)
 	if (gdk_state & GDK_MOD3_MASK)    m |= MOD_MOD3;
 	if (gdk_state & GDK_MOD4_MASK)    m |= MOD_MOD4;
 	if (gdk_state & GDK_MOD5_MASK)    m |= MOD_MOD5;
-	return m == mod;
+	return (m & ~global.mod_mask) == (mod & ~global.mod_mask);
 }
 
 static gboolean msg_timeout(struct window *w)
@@ -1238,21 +1242,10 @@ static int parse(struct window *w, WebKitWebView *wv, struct list *in_list, gcha
 	return ret;
 }
 
-static void parse_mode_and_mod_mask(struct window *w, const gchar *mode_str, const gchar *mod_str, guint *mode, guint *mod, const gchar *n)
+static void parse_mod_mask(struct window *w, const gchar *mod_str, guint *mod, const char *n)
 {
 	int i;
-	*mode = *mod = 0;
-	for (i = 0; i < strlen(mode_str); ++i) {
-		switch (mode_str[i]) {
-			case '-': break;
-			case 'a': *mode = MODE_ALL; break;
-			case 'n': *mode |= MODE_NORMAL; break;
-			case 'c': *mode |= MODE_CMD; break;
-			case 'i': *mode |= MODE_INSERT; break;
-			case 'p': *mode |= MODE_PASSTHROUGH; break;
-			default:  g_free(out(w, TRUE, g_strdup_printf("%s: warning: unrecognized mode '%c'\n", n, mode_str[i])));
-		}
-	}
+	*mod = 0;
 	for (i = 0; i < strlen(mod_str); ++i) {
 		switch (mod_str[i]) {
 			case '-': break;
@@ -1265,6 +1258,23 @@ static void parse_mode_and_mod_mask(struct window *w, const gchar *mode_str, con
 			case '4': *mod |= GDK_MOD4_MASK; break;
 			case '5': *mod |= GDK_MOD5_MASK; break;
 			default:  g_free(out(w, TRUE, g_strdup_printf("%s: warning: unrecognized modifier '%c'\n", n, mod_str[i])));
+		}
+	}
+}
+
+static void parse_mode_mask(struct window *w, const gchar *mode_str, guint *mode, const char *n)
+{
+	int i;
+	*mode = 0;
+	for (i = 0; i < strlen(mode_str); ++i) {
+		switch (mode_str[i]) {
+			case '-': break;
+			case 'a': *mode = MODE_ALL; break;
+			case 'n': *mode |= MODE_NORMAL; break;
+			case 'c': *mode |= MODE_CMD; break;
+			case 'i': *mode |= MODE_INSERT; break;
+			case 'p': *mode |= MODE_PASSTHROUGH; break;
+			default:  g_free(out(w, TRUE, g_strdup_printf("%s: warning: unrecognized mode '%c'\n", n, mode_str[i])));
 		}
 	}
 }
@@ -2020,7 +2030,8 @@ static int cmd_bind(struct window *w, WebKitWebView *wv, struct command *c, int 
 		out(w, TRUE, c->usage);
 		return 1;
 	}
-	parse_mode_and_mod_mask(w, argv[1], argv[2], &mode, &mod, argv[0]);
+	parse_mode_mask(w, argv[1], &mode, argv[0]);
+	parse_mod_mask(w, argv[2], &mod, argv[0]);
 	if (!mode) {
 		g_free(out(w, TRUE, g_strdup_printf("%s: error: no valid modes given: \"%s\"\n", argv[0], argv[1])));
 		return 1;
@@ -2644,7 +2655,8 @@ static int cmd_unbind(struct window *w, WebKitWebView *wv, struct command *c, in
 		out(w, TRUE, c->usage);
 		return 1;
 	}
-	parse_mode_and_mod_mask(w, argv[1], argv[2], &mode, &mod, argv[0]);
+	parse_mode_mask(w, argv[1], &mode, argv[0]);
+	parse_mod_mask(w, argv[2], &mod, argv[0]);
 	b = get_bind(w, mode, mod, argv[3]);
 	if (b == NULL) return 0;
 	b->mode &= ~mode;
@@ -3029,6 +3041,18 @@ static union wkb_setting get_print_keyval(struct window *w, int context)
 static void set_print_keyval(struct window *w, union wkb_setting v)
 {
 	w->print_keyval = v.b;
+}
+
+static union wkb_setting get_mod_mask(struct window *w, int context)
+{
+	static gchar str_mod[8];
+	get_mod_string(global.mod_mask, str_mod);
+	return (union wkb_setting) { .s = str_mod };
+}
+
+static void set_mod_mask(struct window *w, union wkb_setting v)
+{
+	parse_mod_mask(w, v.s, &global.mod_mask, "set_mod_mask");
 }
 
 static union wkb_setting get_fullscreen(struct window *w, int context)
