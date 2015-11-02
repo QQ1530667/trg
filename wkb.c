@@ -216,7 +216,7 @@ static struct alias * new_alias(struct window *, const gchar *, const gchar *);
 static struct bind * new_bind(struct window *);
 static struct download * new_download(WebKitDownload *, const gchar *);
 static struct hist * new_hist(struct window *, const gchar *);
-static GtkWidget * new_tab(struct window *, WebKitWebView *, const gchar *);
+static GtkWidget * new_tab(struct window *, WebKitWebView *, const gchar *, gboolean);
 static struct var * new_var(struct window *, const gchar *, int);
 static struct window * new_window(struct window *, gboolean, const gchar *);
 static void open_download(struct window *, WebKitWebView *, struct download *, const gchar *);
@@ -882,7 +882,7 @@ static struct hist * new_hist(struct window *w, const gchar *line)
 	return h;
 }
 
-static GtkWidget * new_tab(struct window *w, WebKitWebView *v, const gchar *uri)
+static GtkWidget * new_tab(struct window *w, WebKitWebView *v, const gchar *uri, gboolean is_bg)
 {
 	int i;
 	GtkWidget *wv;
@@ -927,8 +927,11 @@ static GtkWidget * new_tab(struct window *w, WebKitWebView *v, const gchar *uri)
 	t->c = sw;
 #endif
 	t->w = w;
-	LIST_ADD_HEAD(&w->tabs, (struct node *) t);
-	gtk_notebook_insert_page(GTK_NOTEBOOK(w->nb), t->c, gtk_label_new(NULL), gtk_notebook_get_current_page(GTK_NOTEBOOK(w->nb)) + 1);
+	if (is_bg)
+		LIST_ADD_TAIL(&w->tabs, (struct node *) t);
+	else
+		LIST_ADD_HEAD(&w->tabs, (struct node *) t);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(w->nb), t->c, gtk_label_new(NULL), (is_bg) ? -1 : gtk_notebook_get_current_page(GTK_NOTEBOOK(w->nb)) + 1);
 	gtk_container_child_set(GTK_CONTAINER(w->nb), t->c, "tab-expand", TRUE, NULL);
 #ifdef __HAVE_GTK3__
 	gtk_widget_set_halign(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), t->c), GTK_ALIGN_START);
@@ -937,7 +940,8 @@ static GtkWidget * new_tab(struct window *w, WebKitWebView *v, const gchar *uri)
 	gtk_misc_set_alignment(GTK_MISC(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), t->c)), 0, 0.5);
 #endif
 	gtk_label_set_ellipsize(GTK_LABEL(gtk_notebook_get_tab_label(GTK_NOTEBOOK(w->nb), t->c)), PANGO_ELLIPSIZE_END);
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), t->c));
+	if (!is_bg)
+		gtk_notebook_set_current_page(GTK_NOTEBOOK(w->nb), gtk_notebook_page_num(GTK_NOTEBOOK(w->nb), t->c));
 	for (i = 0; i < LENGTH(default_wkb_settings); ++i)
 		if (default_wkb_settings[i].scope == WKB_SETTING_SCOPE_TAB && default_wkb_settings[i].set != NULL)
 			default_wkb_settings[i].set(w, default_wkb_settings[i].default_value);
@@ -1069,7 +1073,7 @@ static struct window * new_window(struct window *w, gboolean create, const gchar
 		if (default_wkb_settings[i].scope == WKB_SETTING_SCOPE_WINDOW && default_wkb_settings[i].set != NULL)
 			default_wkb_settings[i].set(w, default_wkb_settings[i].default_value);
 	if (create)
-		new_tab(w, NULL, uri);
+		new_tab(w, NULL, uri, false);
 	set_mode(w, MODE_CMD);  /* workaround for GTK3 incorrectly calculating the size of w->i */
 	set_mode(w, MODE_NORMAL);
 	LIST_ADD_TAIL(&global.windows, (struct node *) w);
@@ -1531,7 +1535,7 @@ static gboolean cb_close(WebKitWebView *wv, struct tab *t)
 {
 	struct window *w = t->w;
 	destroy_tab(t);
-	if (w->tabs.h == NULL) new_tab(w, NULL, global.homepage);
+	if (w->tabs.h == NULL) new_tab(w, NULL, global.homepage, false);
 #ifndef __HAVE_WEBKIT2__
 	return TRUE;
 #endif
@@ -1591,7 +1595,7 @@ static GtkWidget * cb_create(WebKitWebView *wv, WebKitNavigationAction *na, stru
 static GtkWidget * cb_create(WebKitWebView *wv, struct tab *t)
 #endif
 {
-	if (global.allow_popups) return new_tab(t->w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL);
+	if (global.allow_popups) return new_tab(t->w, WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(wv)), NULL, false);
 	else {
 		msg(t->w, "cb_create(): blocked");
 		return NULL;
@@ -1612,8 +1616,10 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 			if (webkit_navigation_action_get_mouse_button(na) == 2) {
 				if (webkit_navigation_action_get_modifiers(na) & GDK_SHIFT_MASK)
 					new_window(g_malloc0(sizeof(struct window)), TRUE, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
+				else if (webkit_navigation_action_get_modifiers(na) & GDK_CONTROL_MASK)
+					new_tab(t->w, NULL, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)), true);
 				else
-					new_tab(t->w, NULL, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)));
+					new_tab(t->w, NULL, webkit_uri_request_get_uri(webkit_navigation_action_get_request(na)), false);
 				webkit_policy_decision_ignore(d);
 				return TRUE;
 			}
@@ -1623,7 +1629,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 				if (webkit_navigation_policy_decision_get_modifiers(nd) & GDK_SHIFT_MASK)
 					new_window(g_malloc0(sizeof(struct window)), TRUE, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
 				else
-					new_tab(t->w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)));
+					new_tab(t->w, NULL, webkit_uri_request_get_uri(webkit_navigation_policy_decision_get_request(nd)), false);
 				webkit_policy_decision_ignore(d);
 				return TRUE;
 			}
@@ -1650,7 +1656,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *d, Web
 #else
 static GtkWidget * cb_create(WebKitWebView *wv, WebKitWebFrame *f, struct tab *t)
 {
-	if (global.allow_popups) return new_tab(t->w, NULL, NULL);
+	if (global.allow_popups) return new_tab(t->w, NULL, NULL, false);
 	else {
 		msg(t->w, "cb_create(): blocked");
 		return NULL;
@@ -1669,8 +1675,10 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitWebFrame *f, WebKitNet
 	if (webkit_web_navigation_action_get_button(na) == 2) {
 		if (webkit_web_navigation_action_get_modifier_state(na) & GDK_SHIFT_MASK)
 			new_window(g_malloc0(sizeof(struct window)), TRUE, webkit_network_request_get_uri(r));
+		else if (webkit_web_navigation_action_get_modifier_state(na) & GDK_CONTROL_MASK)
+			new_tab(t->w, NULL, webkit_network_request_get_uri(r), true);
 		else
-			new_tab(t->w, NULL, webkit_network_request_get_uri(r));
+			new_tab(t->w, NULL, webkit_network_request_get_uri(r), false);
 		webkit_web_policy_decision_ignore(d);
 		return TRUE;
 	}
@@ -1680,7 +1688,7 @@ static gboolean cb_decide_policy(WebKitWebView *wv, WebKitWebFrame *f, WebKitNet
 static gboolean cb_decide_window(WebKitWebView *wv, WebKitWebFrame *f, WebKitNetworkRequest *r, WebKitWebNavigationAction *na, WebKitWebPolicyDecision *d, struct tab *t)
 {
 	if (webkit_web_navigation_action_get_reason(na) == WEBKIT_WEB_NAVIGATION_REASON_LINK_CLICKED) {
-		new_tab(t->w, NULL, webkit_network_request_get_uri(r));
+		new_tab(t->w, NULL, webkit_network_request_get_uri(r), false);
 		webkit_web_policy_decision_ignore(d);
 		return TRUE;
 	}
@@ -2617,7 +2625,7 @@ static int cmd_switch(struct window *w, WebKitWebView *wv, struct command *c, in
 static int cmd_tclose(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	destroy_tab(GET_CURRENT_TAB(w));
-	if (w->tabs.h == NULL) new_tab(w, NULL, global.homepage);
+	if (w->tabs.h == NULL) new_tab(w, NULL, global.homepage, false);
 	update_tabs_l(w);
 	return 0;
 }
@@ -2625,10 +2633,11 @@ static int cmd_tclose(struct window *w, WebKitWebView *wv, struct command *c, in
 static int cmd_topen(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	GString *str;
-	if (argc <= 1) new_tab(w, NULL, global.homepage);
+	gboolean bg = (strcmp(argv[0], "topenbg") == 0);
+	if (argc <= 1) new_tab(w, NULL, global.homepage, bg);
 	else {
 		str = concat_args(argc, argv);
-		new_tab(w, NULL, str->str);
+		new_tab(w, NULL, str->str, bg);
 		g_string_free(str, TRUE);
 	}
 	return 0;

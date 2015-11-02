@@ -129,6 +129,8 @@ static gchar cmd_tclose_desc[]        = "tclose: close the current tab\n";
 static gchar cmd_tclose_usage[]       = "tclose: usage: tclose\n";
 static gchar cmd_topen_desc[]         = "topen: load a uri in a new tab (defaults to {"VAR_HOMEPAGE"})\n";
 static gchar cmd_topen_usage[]        = "topen: usage: topen [uri-]\n";
+static gchar cmd_topenbg_desc[]       = "topenbg: load a uri in a new backgrounded tab (defaults to {"VAR_HOMEPAGE"})\n";
+static gchar cmd_topenbg_usage[]      = "topenbg: usage: topenbg [uri-]\n";
 static gchar cmd_unalias_desc[]       = "unalias: remove an alias definition\n";
 static gchar cmd_unalias_usage[]      = "unalias: usage: unalias <name>\n";
 static gchar cmd_unbind_desc[]        = "unbind: unbind a key\n";
@@ -191,6 +193,7 @@ static struct command commands[] = {
 	{ "switch",          cmd_switch_desc,       cmd_switch_usage,       cmd_switch },
 	{ "tclose",          cmd_tclose_desc,       cmd_tclose_usage,       cmd_tclose },
 	{ "topen",           cmd_topen_desc,        cmd_topen_usage,        cmd_topen },
+	{ "topenbg",         cmd_topenbg_desc,      cmd_topenbg_usage,      cmd_topen },
 	{ "unalias",         cmd_unalias_desc,      cmd_unalias_usage,      cmd_unalias },
 	{ "unbind",          cmd_unbind_desc,       cmd_unbind_usage,       cmd_unbind },
 	{ "unbind-all",      cmd_unbind_all_desc,   cmd_unbind_all_usage,   cmd_unbind_all },
