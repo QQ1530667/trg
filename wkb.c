@@ -1505,13 +1505,17 @@ static void update_title(struct tab *t)
 	const gchar *title = webkit_web_view_get_title(wv);
 	if (title == NULL || strlen(title) == 0) title = webkit_web_view_get_uri(wv);
 	if (title == NULL || strlen(title) == 0) title = null_title;
-	gchar *tab_title;
+	gchar *tab_title, *window_title;
 	if (progress == 0.0 || progress == 1.0)
 		tab_title = g_strdup_printf("%d  %s", gtk_notebook_page_num(GTK_NOTEBOOK(t->w->nb), t->c) + 1, title);
 	else
 		tab_title = g_strdup_printf("%d  [%d%%] %s", gtk_notebook_page_num(GTK_NOTEBOOK(t->w->nb), t->c) + 1, (int) lround(progress * 100), title);
 	gtk_label_set_text(GTK_LABEL(gtk_notebook_get_tab_label(GTK_NOTEBOOK(t->w->nb), t->c)), tab_title);
-	if (wv == GET_CURRENT_VIEW(t->w)) gtk_window_set_title(GTK_WINDOW(t->w->w), title);
+	if (wv == GET_CURRENT_VIEW(t->w)) {
+		window_title = g_strconcat(title, " - wkb", NULL);
+		gtk_window_set_title(GTK_WINDOW(t->w->w), window_title);
+		g_free(window_title);
+	}
 	g_free(tab_title);
 }
 
