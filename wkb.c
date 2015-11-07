@@ -2475,6 +2475,7 @@ static int cmd_reorder(struct window *w, WebKitWebView *wv, struct command *c, i
 	}
 	gtk_notebook_reorder_child(GTK_NOTEBOOK(w->nb), ((struct tab *) w->tabs.h)->c, p);
 	LIST_FOREACH(&w->tabs, t) update_title(t);
+	update_tabs_l(w);
 	return 0;
 }
 
