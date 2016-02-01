@@ -21,6 +21,7 @@ mkdir -p ./bookmarks
 
 [ -f "./bookmarks/$CATEGORY" ] || printf '%s\n' "<h1>:: ${CATEGORY#x}</h1>" > "./bookmarks/$CATEGORY"
 sed -i -e "1a \\
-<p><a href=\"$URI\">$TITLE</a><br><span class="uri">$URI</span></p>" "./bookmarks/$CATEGORY"
+<p><a href=\"$URI\">$TITLE</a><br><span class=\"uri\">$URI</span></p>
+" "./bookmarks/$CATEGORY"
 
 cat ./header.html ./bookmarks/Uncategorized ./bookmarks/x* ./footer.html > ./bookmarks.html 2> /dev/null || true
