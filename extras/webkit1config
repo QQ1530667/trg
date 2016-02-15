@@ -13,6 +13,7 @@ nset s.minimum-font-size 7
 nset v.full-content-zoom t
 nset soup.max-conns 64
 nset soup.max-conns-per-host 16
+nset soup.ssl-use-system-ca-file t
 
 # Hooks
 nset hook.create "{hook.create};nset v.full-content-zoom t"
