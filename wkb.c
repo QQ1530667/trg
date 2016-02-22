@@ -210,7 +210,7 @@ static gchar * get_var_value(struct window *, WebKitWebView *, struct var *, int
 static struct default_wkb_setting * get_wkb_setting(struct window *, const gchar *);
 static void init_cmd_fifo(struct window *);
 static int modmask_compare(guint, guint);
-static void msg(struct window *, const gchar *);
+static gchar * msg(struct window *, gchar *);
 static void navigate(struct window *, WebKitWebView *, int);
 static struct alias * new_alias(struct window *, const gchar *, const gchar *);
 static struct bind * new_bind(struct window *);
@@ -802,13 +802,14 @@ static gboolean msg_timeout(struct window *w)
 	return FALSE;
 }
 
-static void msg(struct window *w, const gchar *s)
+static gchar * msg(struct window *w, gchar *s)
 {
 	gtk_label_set_text(GTK_LABEL(w->msg_l), s);
 	gtk_widget_show(w->msg_l);
 	if (w->timeout) g_source_remove(w->timeout);
 	if (global.msg_timeout > 0)
 		w->timeout = g_timeout_add(global.msg_timeout, (GSourceFunc) msg_timeout, w);
+	return s;
 }
 
 static void navigate(struct window *w, WebKitWebView *v, int n)
@@ -1726,15 +1727,26 @@ static gboolean cb_download_decide_destination(WebKitDownload *d, gchar *suggest
 
 static void cb_download_failed(WebKitDownload *d, GError *e, struct download *dl)
 {
+	struct window *wn;
 	dl->status = e->code;
+	switch (dl->status) {
+	case DOWNLOAD_STATUS_ERROR_NETWORK:
+		LIST_FOREACH(&global.windows, wn)
+			g_free(msg(wn, g_strdup_printf("download %d failed: network error", dl->id)));
+		break;
+	case DOWNLOAD_STATUS_ERROR_DEST:
+		LIST_FOREACH(&global.windows, wn)
+			g_free(msg(wn, g_strdup_printf("download %d failed: destination error", dl->id)));
+		break;
+	}
 }
 
 static void cb_download_finished(WebKitDownload *d, struct download *dl)
 {
 	if (DOWNLOAD_IS_ACTIVE(dl->status)) {
 		dl->status = DOWNLOAD_STATUS_FINISHED;
-		if (dl->auto_open) open_download((struct window *)
-			global.windows.h, NULL, dl, global.dl_open_cmd);  /* FIXME */
+		if (dl->auto_open)
+			open_download((struct window *) global.windows.h, NULL, dl, global.dl_open_cmd);  /* FIXME */
 	}
 	update_dl_l(NULL);
 }
@@ -1754,9 +1766,13 @@ static gboolean cb_download(WebKitWebView *wv, WebKitDownload *d, void *v)
 
 static void cb_download_status_changed(WebKitDownload *d, GParamSpec *p, struct download *dl)
 {
+	struct window *wn;
 	dl->status = webkit_download_get_status(d);
 	if (dl->status == WEBKIT_DOWNLOAD_STATUS_FINISHED && dl->auto_open)
 		open_download((struct window *) global.windows.h, NULL, dl, global.dl_open_cmd);  /* FIXME */
+	else if (dl->status == WEBKIT_DOWNLOAD_STATUS_ERROR)
+		LIST_FOREACH(&global.windows, wn)
+			g_free(msg(wn, g_strdup_printf("download %d failed", dl->id)));
 	update_dl_l(NULL);
 }
 #endif
