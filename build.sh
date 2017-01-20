@@ -25,6 +25,7 @@ Options:
   --with-webkit2
   --with-webkit1
   --shared-process  (webkit2 only; use shared process model)
+  --text-cookies    (webkit2 only; use text format for cookies file)
   --no-config       (ignore .config)
   --help"
 
@@ -35,6 +36,7 @@ for i in "$@"; do
 		--with-webkit2)   CONFIG_WEBKIT_API=2 ;;
 		--with-webkit1)   CONFIG_WEBKIT_API=1 ;;
 		--shared-process) EXTRA_CFLAGS="$EXTRA_CFLAGS -D__WITH_SHARED__" ;;
+		--text-cookies)   EXTRA_CFLAGS="$EXTRA_CFLAGS -D__WITH_TEXT_COOKIES__" ;;
 		--no-config) ;;
 		--help) echo "$USAGE"; exit 0 ;;
 		*) echo "error: invalid option: $i"; echo "$USAGE"; exit 1 ;;

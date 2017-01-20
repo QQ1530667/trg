@@ -333,7 +333,11 @@ static const gchar *builtin_config[] = {
 	"nset "VAR_CONFIG_DIR" \"{XDG_CONFIG_HOME:XDG_CONFIG_HOME_DEFAULT}/wkb\"",
 	"nset "VAR_DOWNLOAD_DIR" \"{HOME}\"",
 	"nset "VAR_DL_OPEN_CMD" \"spawn xdg-open \\\"%f\\\"\"",
+#ifdef __WITH_TEXT_COOKIES__
 	"nset "VAR_COOKIE_FILE" \"{"VAR_CONFIG_DIR"}/cookies.txt\"",
+#else
+	"nset "VAR_COOKIE_FILE" \"{"VAR_CONFIG_DIR"}/cookies.sqlite\"",
+#endif
 #ifdef __HAVE_WEBKIT2__
 	"add-ss \"@import url('file://{"VAR_CONFIG_DIR"}/stylesheet.css');\" \"\" \"\" \"\"",
 #else

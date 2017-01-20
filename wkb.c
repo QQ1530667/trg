@@ -3006,7 +3006,11 @@ static void set_cookie_file(struct window *w, union wkb_setting v)
 	g_free(global.cookie_file);
 	global.cookie_file = g_strdup(v.s);
 #ifdef __HAVE_WEBKIT2__
+#ifdef __WITH_TEXT_COOKIES__
 	webkit_cookie_manager_set_persistent_storage(webkit_web_context_get_cookie_manager(webkit_web_view_get_context(GET_CURRENT_VIEW(w))), (v.s == NULL) ? "" : v.s, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
+#else
+	webkit_cookie_manager_set_persistent_storage(webkit_web_context_get_cookie_manager(webkit_web_view_get_context(GET_CURRENT_VIEW(w))), (v.s == NULL) ? "" : v.s, WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);
+#endif
 #else
 	soup_session_remove_feature_by_type(webkit_get_default_session(), soup_cookie_jar_get_type());
 	if (v.s == NULL || v.s[0] == '\0') soup_session_add_feature(webkit_get_default_session(), SOUP_SESSION_FEATURE(soup_cookie_jar_new()));
