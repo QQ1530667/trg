@@ -9,14 +9,14 @@ var img_hover = img_hover || {
 	timeout_var:null,
 
 	display_image:function(element, href) {
-		img_hover.image.src = href;
-		img_hover.imagelink.href = element.href;
-		img_hover.image.style.maxWidth = (window.innerWidth - 22) + 'px';
-		img_hover.image.style.maxHeight = (window.innerHeight - 22) + 'px';
 		img_hover.current_element = element;
 		if (img_hover.timeout_var)
 			window.clearTimeout(img_hover.timeout_var);
 		img_hover.timeout_var = window.setTimeout(function() {
+				img_hover.image.src = href;
+				img_hover.imagelink.href = element.href;
+				img_hover.image.style.maxWidth = (window.innerWidth - 22) + 'px';
+				img_hover.image.style.maxHeight = (window.innerHeight - 22) + 'px';
 				img_hover.imagediv.hidden = false;
 				img_hover.timeout_var = null;
 			}, 150);
