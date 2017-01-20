@@ -56,6 +56,10 @@ enum {
 	WKB_VAR_CONTEXT_BOOL_TOGGLE,
 };
 
+enum {
+	WKB_CMD_RET_WINDOW_DESTROYED = 128,
+};
+
 static struct {
 	struct list windows;
 	struct list vars;
@@ -197,7 +201,7 @@ static void destroy_token_list(struct list *);
 static void destroy_var(struct window *, struct var *);
 static GString * escape_string(const gchar *);
 static void eval_js(WebKitWebView *, const gchar *, const gchar *, int);
-static void exec_line(struct window *, WebKitWebView *, const gchar *);
+static int exec_line(struct window *, WebKitWebView *, const gchar *);
 static void fullscreen_mode(struct window *, gboolean);
 static struct alias * get_alias(struct window *, const gchar *);
 static struct bind * get_bind(struct window *, guint, guint, const gchar *);
@@ -606,17 +610,17 @@ static void eval_js(WebKitWebView *wv, const gchar *script, const gchar *source,
 #endif
 }
 
-static void exec_line(struct window *w, WebKitWebView *wv, const gchar *line)
+static int exec_line(struct window *w, WebKitWebView *wv, const gchar *line)
 {
 	struct list tok = NEW_LIST, alias_tok = NEW_LIST;
 	struct token *t = NULL;
 	struct alias *a = NULL;
 	gchar *arg = NULL, **argv = NULL;
-	int i = 0, argc = 0;
+	int i = 0, argc = 0, stop = 0, ret = 0;
 
-	if (line == NULL) return;
+	if (line == NULL) return 0;
 	tokenize(line, &tok);
-	while (tok.h != NULL) {
+	while (tok.h != NULL && !stop) {
 		if (parse(w, SELECT_VIEW(w, wv), &tok, &arg)) goto parse_error;
 		if (argc == 0 && arg != NULL && (a = get_alias(w, arg)) != NULL) {
 			g_free(arg);
@@ -638,7 +642,9 @@ static void exec_line(struct window *w, WebKitWebView *wv, const gchar *line)
 		if ((arg == NULL || tok.h == NULL) && argc != 0) {
 			for (i = 0; i < LENGTH(commands); ++i) {
 				if (strcmp(argv[0], commands[i].name) == 0) {
-					commands[i].func(w, SELECT_VIEW(w, wv), &commands[i], argc, argv);
+					ret = commands[i].func(w, SELECT_VIEW(w, wv), &commands[i], argc, argv);
+					if (ret == WKB_CMD_RET_WINDOW_DESTROYED)
+						stop = 1;
 					break;
 				}
 			}
@@ -652,6 +658,7 @@ static void exec_line(struct window *w, WebKitWebView *wv, const gchar *line)
 	}
 	parse_error:
 	destroy_token_list(&tok);
+	return ret;
 }
 
 static void fullscreen_mode(struct window *w, gboolean f)
@@ -2318,25 +2325,27 @@ static int cmd_last(struct window *w, WebKitWebView *wv, struct command *c, int 
 
 static int cmd_loadconfig(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
-	int i;
+	int i, ret = 0, done = 0;
 	gchar *cf_path, *contents, *start_line, *end_line;
 	GError *err = NULL;
 	if (argc < 2) {
 		out(w, TRUE, c->usage);
 		return 1;
 	}
-	for (i = 1; i < argc; ++i) {
+	for (i = 1; i < argc && !done; ++i) {
 		if (global.config_dir != NULL && argv[i][0] != '/') cf_path = g_strconcat(global.config_dir, "/", argv[i], NULL);
 		else cf_path = g_strdup(argv[i]);
 		if (g_file_get_contents(cf_path, &contents, NULL, &err)) {
 			start_line = contents;
-			while (start_line != NULL) {
+			while (start_line != NULL && !done) {
 				end_line = strchr(start_line, '\n');
 				if (end_line != NULL) {
 					*end_line = '\0';
 					++end_line;
 				}
-				exec_line(w, wv, start_line);
+				ret = exec_line(w, wv, start_line);
+				if (ret == WKB_CMD_RET_WINDOW_DESTROYED)
+					done = 1;
 				start_line = end_line;
 			}
 		}
@@ -2347,7 +2356,7 @@ static int cmd_loadconfig(struct window *w, WebKitWebView *wv, struct command *c
 			err = NULL;
 		}
 	}
-	return 0;
+	return ret;
 }
 
 static int cmd_move(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
@@ -2719,7 +2728,7 @@ static int cmd_unset(struct window *w, WebKitWebView *wv, struct command *c, int
 static int cmd_wclose(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
 {
 	gtk_widget_destroy(w->w);
-	return 0;
+	return WKB_CMD_RET_WINDOW_DESTROYED;
 }
 
 static int cmd_window(struct window *w, WebKitWebView *wv, struct command *c, int argc, gchar **argv)
@@ -3349,10 +3358,12 @@ int main(int argc, char *argv[])
 		if (default_wkb_settings[i].scope == WKB_SETTING_SCOPE_GLOBAL && default_wkb_settings[i].set != NULL)
 			default_wkb_settings[i].set(w, default_wkb_settings[i].default_value);
 	for (i = 0; i < LENGTH(var_handlers); ++i) if (var_handlers[i].init != NULL) var_handlers[i].init(w, GET_CURRENT_VIEW(w), &var_handlers[i]);
-	for (i = 0; i < LENGTH(builtin_config); ++i) exec_line(w, NULL, builtin_config[i]);
-	str = concat_args(argc, argv);
-	exec_line(w, NULL, str->str);
-	g_string_free(str, TRUE);
+	for (i = 0; i < LENGTH(builtin_config) && global.windows.h != NULL; ++i) exec_line((struct window *) global.windows.h , NULL, builtin_config[i]);
+	if (global.windows.h != NULL) {
+		str = concat_args(argc, argv);
+		exec_line((struct window *) global.windows.h, NULL, str->str);
+		g_string_free(str, TRUE);
+	}
 	if (global.default_width != DEFAULT_WIDTH || global.default_height != DEFAULT_HEIGHT)
 		LIST_FOREACH(&global.windows, w)
 			gtk_window_set_default_size(GTK_WINDOW(w->w), global.default_width, global.default_height);
