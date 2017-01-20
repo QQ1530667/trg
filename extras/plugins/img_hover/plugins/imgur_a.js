@@ -1,6 +1,5 @@
 var img_hover_plugins = img_hover_plugins || [];
 img_hover_plugins.push({
-	name:'imgur_a',
 	prepare_links:function(links) {
 		for (var i = 0; i < links.length; ++i) {
 			var matches = links[i].href.match(/^[A-Za-z0-9+.-]+:\/\/(?:www\.|i\.|m\.)?imgur\.com\/([a-zA-Z0-9]{5,7})(?:$|[?#].*$)/);
