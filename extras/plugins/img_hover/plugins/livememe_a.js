@@ -4,7 +4,7 @@ img_hover_plugins.push({
 		for (var i = 0; i < links.length; ++i) {
 			var matches = links[i].href.match(/^[A-Za-z0-9+.-]+:\/\/(?:www\.)?livememe\.com\/([a-zA-Z0-9]+)/);
 			if (matches && matches[1]) {
-				var image_url = 'http://www.livememe.com/' + matches[1] + '.jpg';
+				var image_url = 'https://e.lvme.me/' + matches[1] + '.jpg';
 				links[i].addEventListener('mouseover', {
 						element:links[i],
 						href:image_url,
