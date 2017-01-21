@@ -5,19 +5,28 @@ var img_hover = img_hover || {
 	imagediv:null,
 	imagelink:null,
 	image:null,
+	spinner:null,
 	current_element:null,
 	timeout_var:null,
+	spinner_data:'data:image/gif;base64,R0lGODlhEgAEAKEAAH9/fwAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQJDwACACwAAAAAEgAEAAACB5SPqcvtrwoAIfkECQ8AAgAsAAAAAAQABAAAAgSEjwkFACH5BAkPAAIALAAAAAALAAQAAAIMjCMJC4fKXBKsnVkLACH5BAkPAAIALAAAAAASAAQAAAIRjCN5mOCwkojt0Xnkg1l1sRUAIfkECQ8AAgAsAAAAABIABAAAAhGEIRkbKRwOUsxBaStdeDdfAAAh+QQJDwACACwHAAAACwAEAAACDIQhGRuHylwSrJ1ZCwAh+QQFDwACACwOAAAABAAEAAACBISPCQUAOw==',
 
 	display_image:function(element, href) {
 		img_hover.current_element = element;
 		if (img_hover.timeout_var)
 			window.clearTimeout(img_hover.timeout_var);
 		img_hover.timeout_var = window.setTimeout(function() {
-				img_hover.image.src = href;
-				img_hover.imagelink.href = element.href;
-				img_hover.image.style.maxWidth = (window.innerWidth - 22) + 'px';
-				img_hover.image.style.maxHeight = (window.innerHeight - 22) + 'px';
-				img_hover.imagediv.hidden = false;
+				if (img_hover.image.src !== href) {
+					img_hover.imagelink.style.display = 'none';
+					img_hover.spinner.style.display = 'inline';
+					img_hover.image.src = href;
+					img_hover.imagelink.href = element.href;
+					img_hover.image.style.maxWidth = (window.innerWidth - 22) + 'px';
+					img_hover.image.style.maxHeight = (window.innerHeight - 22) + 'px';
+				}
+				else {
+					img_hover.imagelink.style.display = 'inline';
+				}
+				img_hover.imagediv.style.display = 'inline';
 				img_hover.timeout_var = null;
 			}, 150);
 	},
@@ -31,7 +40,9 @@ var img_hover = img_hover || {
 					window.clearTimeout(img_hover.timeout_var);
 					img_hover.timeout_var = null;
 				}
-				img_hover.imagediv.hidden = true;
+				img_hover.spinner.style.display = 'none';
+				img_hover.imagelink.style.display = 'none';
+				img_hover.imagediv.style.display = 'none';
 				img_hover.current_element = null;
 			}
 		}
@@ -62,14 +73,28 @@ var img_hover = img_hover || {
 		img_hover.imagediv = document.createElement('div');
 		img_hover.imagelink = document.createElement('a');
 		img_hover.image = document.createElement('img');
+		img_hover.spinner = document.createElement('img');
 
 		img_hover.imagelink.appendChild(img_hover.image);
+		img_hover.imagelink.style.display = 'none';
 		img_hover.imagediv.appendChild(img_hover.imagelink);
+		img_hover.imagediv.appendChild(img_hover.spinner);
 
 		img_hover.image.style.margin = '0';
 		img_hover.image.style.padding = '0';
 		img_hover.image.style.border = '1px #aaa solid';
 		img_hover.image.style.backgroundColor = '#fff';
+		img_hover.image.onload = function() {
+			img_hover.spinner.style.display = 'none';
+			img_hover.imagelink.style.display = 'inline';
+		}
+
+		img_hover.spinner.style.display = 'none';
+		img_hover.spinner.style.margin = '0';
+		img_hover.spinner.style.padding = '2px';
+		img_hover.spinner.style.border = '1px #aaa solid';
+		img_hover.spinner.style.backgroundColor = '#fff';
+		img_hover.spinner.src = img_hover.spinner_data;
 
 		img_hover.imagediv.style.position = 'fixed';
 		img_hover.imagediv.style.top = '10px';
@@ -79,7 +104,7 @@ var img_hover = img_hover || {
 		img_hover.imagediv.style.borderWidth = '0';
 		img_hover.imagediv.style.zIndex = 2147483647;
 		img_hover.imagediv.overflow = 'hidden';
-		img_hover.imagediv.hidden = true;
+		img_hover.imagediv.style.display = 'none';
 
 		document.body.appendChild(img_hover.imagediv);
 
