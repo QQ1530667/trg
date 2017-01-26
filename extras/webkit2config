@@ -6,7 +6,6 @@ alias te "nset wkb.tls-errors"
 
 # Settings
 nset s.enable-java f
-nset s.enable-accelerated-2d-canvas t
 nset wkb.spellcheck-langs en_US,en_GB
 nset wkb.spellcheck t
 nset s.default-monospace-font-size 12
