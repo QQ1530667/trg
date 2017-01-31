@@ -15,10 +15,11 @@ var img_hover = img_hover || {
 		if (img_hover.timeout_var)
 			window.clearTimeout(img_hover.timeout_var);
 		img_hover.timeout_var = window.setTimeout(function() {
-				if (img_hover.image.src !== href) {
+				if (img_hover.image.src !== href || !img_hover.image.complete || img_hover.image.naturalHeight == 0) {
 					img_hover.imagelink.style.display = 'none';
 					img_hover.spinner.style.display = 'inline';
-					img_hover.image.src = href;
+					if (img_hover.image.src !== href)
+						img_hover.image.src = href;
 					img_hover.imagelink.href = element.href;
 					img_hover.image.style.maxWidth = (window.innerWidth - 22) + 'px';
 					img_hover.image.style.maxHeight = (window.innerHeight - 22) + 'px';
